@@ -21,9 +21,12 @@ data "external" "latest_sql_backup" {
 resource "google_sql_database_instance" "restored_sql_pg" {
   count            = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
   provider         = google-beta.dr
-  name             = "restored-sql-pg-${random_id.restore_suffix.hex}"
-  region           = var.dr_region
-  database_version = "POSTGRES_15" # Must match source or be compatible
+  # Clean Naming: Use source name + suffix (e.g. sql-pg-dr)
+  # Note: Cloud SQL names cannot be reused for ~1 week after deletion.
+  # If collisions occur, consider adding a short random suffix.
+  name             = "restored-sql-pg${var.restore_suffix}" 
+  region           = var.region # Same-Region Restore to avoid Cross-Region limitations
+  database_version = "POSTGRES_15"
 
   # Native GCBDR Restore Argument
   backupdr_backup = data.external.latest_sql_backup[0].result.full_backup_id
@@ -32,7 +35,8 @@ resource "google_sql_database_instance" "restored_sql_pg" {
     tier = "db-f1-micro"
     ip_configuration {
       ipv4_enabled    = false
-      private_network = var.create_isolated_dr_vpc ? google_compute_network.isolated_dr_vpc[0].id : "projects/${var.host_project_id}/global/networks/${var.vpc_name}"
+      # For Same-Region Restore, we use the Shared VPC (Host Project) where the Vault has access
+      private_network = "projects/${var.host_project_id}/global/networks/${var.vpc_name}"
     }
   }
 
