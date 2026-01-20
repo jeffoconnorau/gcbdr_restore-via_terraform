@@ -115,9 +115,9 @@ terraform destroy \
 ## Known Limitations
 
 ### Cloud SQL Restore
-> [!NOTE]
-> Native Cloud SQL restore resources are not yet available in the Terraform provider. 
-> However, this project implements a **custom wrapper** (via `null_resource` and `gcloud`) to fully support automated Cloud SQL restores to the DR project during the test cycle.
+> [!IMPORTANT]
+> **Native Support Confirmed**: This project now uses the native `google_sql_database_instance` resource with the `backupdr_backup` argument to perform restores, eliminating the need for custom wrappers.
+
 
 
 ### Shielded VM Policy Violation

@@ -18,27 +18,25 @@ data "external" "latest_sql_backup" {
   }
 }
 
-resource "null_resource" "restore_sql_db" {
-  count = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
+resource "google_sql_database_instance" "restored_sql_pg" {
+  count            = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
+  provider         = google-beta.dr
+  name             = "restored-sql-pg-${random_id.restore_suffix.hex}"
+  region           = var.dr_region
+  database_version = "POSTGRES_15" # Must match source or be compatible
 
-  triggers = {
-    # Trigger restore if the backup ID matches (ensures we restore if backup changes, or always? specific logic)
-    # Using backup_id to trigger only when a new backup is selected
-    backup_id = data.external.latest_sql_backup[0].result.full_backup_id
+  # Native GCBDR Restore Argument
+  backupdr_backup = data.external.latest_sql_backup[0].result.full_backup_id
+
+  settings {
+    tier = "db-f1-micro"
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = var.create_isolated_dr_vpc ? google_compute_network.isolated_dr_vpc[0].id : "projects/${var.host_project_id}/global/networks/${var.vpc_name}"
+    }
   }
 
-  provisioner "local-exec" {
-    command = <<EOT
-      echo "Starting Cloud SQL Restore via gcloud class..."
-      gcloud backup-dr restores create restore-sql-${random_id.restore_suffix.hex} \
-        --project=${var.dr_project_id} \
-        --location=${var.dr_region} \
-        --backup="${data.external.latest_sql_backup[0].result.full_backup_id}" \
-        --target-instance-id="sql-restored-${random_id.restore_suffix.hex}" \
-        --network="projects/${var.host_project_id}/global/networks/${var.vpc_name}" \
-        --quiet
-    EOT
-  }
+  deletion_protection = false
 
   depends_on = [
     time_sleep.wait_for_apis
