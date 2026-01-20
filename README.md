@@ -17,40 +17,42 @@ The project follows standard Terraform modular practices:
 
 ## Prerequisites
 
-- **Source Project (Standard)**: `argo-svc-dev-3`
-- **Source Project (CMEK)**: `argo-svc-infra-prod`
-- **DR Project**: `argo-svc-dev-4`
-- **Backup Vault Project**: `argo-svc-gcbdr`
-- **Host Project**: `argo-host-shared-vpc`
+- **Terraform**: >= 1.5.0
+- **Google Cloud Projects**: You will need source, target (DR), and backup vault projects.
+
+## Configuration
+
+This project avoids hardcoding environment-specific values. 
+
+1.  **Copy the example variables file:**
+    ```bash
+    cp terraform.tfvars.example terraform.tfvars
+    ```
+2.  **Edit `terraform.tfvars`** with your specific project IDs, regions, and network names.
+    *   `project_id`: Source Project ID
+    *   `dr_project_id`: Target/DR Project ID
+    *   `gcbdr_project_id`: Backup Vault Project ID
+    *   `infra_prod_project_id`: CMEK Source Project ID
 
 ## Core Concepts
 
 ### Cross-Project CMEK Strategy
 To support CMEK-encrypted backups, we implement a **Cross-Project Vault Architecture**:
-1.  **Source**: CMEK-encrypted VMs reside in `argo-svc-infra-prod`.
-2.  **Vault**: Backups are stored in `argo-svc-gcbdr` (a separate project) using a CMEK-enabled Backup Vault.
+1.  **Source**: CMEK-encrypted VMs reside in the CMEK Source Project (`infra_prod_project_id`).
+2.  **Vault**: Backups are stored in a separate project (`gcbdr_project_id`) using a CMEK-enabled Backup Vault.
 3.  **Key Management**: Both projects utilize specific Service Agents with bidirectional IAM permissions to allow encryption/decryption across project boundaries.
 
 ### Split-Brain Restore Strategy
 During a Disaster Recovery (DR) Test, we employ a "Split-Brain" approach to handle different workload requirements:
 
-1.  **Standard Workloads (`vm-debian`, `vm-ubuntu`)**:
-    - Restored to **DR Project** (`argo-svc-dev-4`).
+1.  **Standard Workloads**:
+    - Restored to **DR Project** (`dr_project_id`).
     - Can target Shared VPC or Isolated VPC.
-2.  **CMEK Encrypted Workloads (`vm-rocky`)**:
-    - Restored to **Source Project** (`argo-svc-infra-prod`) in the **Source Region** (In-Place Restore).
-    - **Reason**: Cloud Key Management Service (KMS) keys are regional. To verify the restore without complex re-keying or cross-region key creation, we restore strictly to the source location (`asia-southeast1`) using the original Source Key.
+2.  **CMEK Encrypted Workloads**:
+    - Restored to **Source Project** (`infra_prod_project_id`) in the **Source Region** (In-Place Restore).
+    - **Reason**: Cloud Key Management Service (KMS) keys are regional. To verify the restore without complex re-keying or cross-region key creation, we restore strictly to the source location using the original Source Key.
 
-5.  **Label Patching**:
-    - Due to current provider limitations in propagating labels, a `null_resource` "patcher" automatically applies `dr=test` tags to restored instances immediately after creation.
-
-## Connectivity
-
-- **Private Service Connect (PSC)**: The project optionally provisions Private Service Access for Cloud SQL.
-- **Shared VPC**: Leverages a robust Hub-and-Spoke model via `argo-host-shared-vpc`.
-- **Isolated DR Network**: Supports creating a completely air-gapped VPC for destructive testing.
-
-## usage
+## Usage
 
 ### 1. Initialize
 ```bash
@@ -75,23 +77,17 @@ terraform apply \
   -var="restore_suffix=-dr"
 ```
 
-**Variable Breakdown:**
-*   `perform_dr_test=true`: **Active Restore**. Enables the `restore.tf` logic.
-*   `provision_cloud_sql=false`: **Skip SQL**. speeds up the test by ignoring database layers.
-*   `create_isolated_dr_vpc=true`: **Isolated Network**. Creates a quarantined VPC for standard VM restores.
-*   `restore_suffix=-dr`: **Naming**. Appends `-dr` to resource names to avoid collisions.
-
 ### 4. Verification
 After the apply completes:
 
 **Standard VMs (DR Project):**
 ```bash
-gcloud compute instances list --project=argo-svc-dev-4
+gcloud compute instances list --project=<your-dr-project-id>
 ```
 
 **CMEK VM (Source Project):**
 ```bash
-gcloud compute instances list --project=argo-svc-infra-prod --filter="labels.dr=test"
+gcloud compute instances list --project=<your-cmek-source-project-id> --filter="labels.dr=test"
 ```
 
 ### 5. Cleanup (Destroy Tests Only)
@@ -112,7 +108,13 @@ terraform destroy \
   -target=google_compute_subnetwork.isolated_dr_subnet
 ```
 
-## Troubleshooting
+## Known Limitations
+
+### Cloud SQL Restore
+> [!NOTE]
+> As of provider version `7.16.0`, the `google_backup_dr_restore_workload` resource **only supports Compute Engine Instances and Disks**. 
+> 
+> **Native Cloud SQL restore is not yet supported in Terraform.** You must perform Cloud SQL restores via the Google Cloud Console or `gcloud` CLI.
 
 ### Shielded VM Policy Violation
 If you see `Error 412: Constraint constraints/compute.requireShieldedVm violated`, it is because the Backup recovery point lacks specific Shielded VM metadata.
