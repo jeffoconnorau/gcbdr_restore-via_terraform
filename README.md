@@ -116,9 +116,11 @@ terraform destroy \
 
 ## Known Limitations
 
-### Cloud SQL Restore
-> [!IMPORTANT]
-> **Native Support Confirmed**: This project now uses the native `google_sql_database_instance` resource with the `backupdr_backup` argument to perform restores, eliminating the need for custom wrappers.
+### Cloud SQL Restore Implementation
+> [!NOTE]
+> Unlike Compute Engine restores which use the `google_backup_dr_restore_workload` resource, Cloud SQL restores use the standard **`google_sql_database_instance`** resource (Cloud SQL Module).
+>
+> The restore is triggered by passing the GCBDR Backup ID to the `backupdr_backup` argument within the `google_sql_database_instance` block. This approach is fully supported and confirmed working.
 
 
 
