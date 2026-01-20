@@ -114,6 +114,12 @@ terraform destroy \
   -target=google_compute_subnetwork.isolated_dr_subnet
 ```
 
+> [!WARNING]
+> **Full Destroy Caveats**: If you run `terraform destroy` on the entire project, you may encounter errors:
+> 1.  **Backup Vaults**: Cannot be destroyed if they contain backups (`NON_EMPTY_BACKUP_VAULT_DELETION`). You must manually delete the backups from the GCBDR Console first or accept that Vaults persist.
+> 2.  **Backup Plans**: May fail if Associations are not largely deleted first (`BACKUP_PLAN_ASSOCIATIONS_EXIST`). Re-running destroy usually fixes this.
+> 3.  **Service Networking**: May fail to release the IP range if Cloud SQL instances were just deleted (`Error code 9`). This typically resolves itself after a few minutes.
+
 ## Known Limitations
 
 ### Cloud SQL Restore Implementation
