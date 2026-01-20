@@ -58,6 +58,13 @@ resource "google_project_service" "dr_kms" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "dr_servicenetworking" {
+  provider           = google-beta
+  project            = var.dr_project_id
+  service            = "servicenetworking.googleapis.com"
+  disable_on_destroy = false
+}
+
 # ------------------------------------------------------------------------------
 # Wait for APIs to be enabled
 # ------------------------------------------------------------------------------
@@ -73,7 +80,8 @@ resource "time_sleep" "wait_for_apis" {
     google_project_service.dns,
     google_project_service.dr_dns,
     google_project_service.kms,
-    google_project_service.dr_kms
+    google_project_service.dr_kms,
+    google_project_service.dr_servicenetworking
   ]
 
   triggers = {

@@ -39,6 +39,7 @@ resource "google_sql_database_instance" "restored_sql_pg" {
   deletion_protection = false
 
   depends_on = [
-    time_sleep.wait_for_apis
+    time_sleep.wait_for_apis,
+    google_service_networking_connection.dr_private_vpc_connection # Ensure PSA peering is established
   ]
 }

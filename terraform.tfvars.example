@@ -18,6 +18,7 @@ dr_region               = "asia-southeast2"
 dr_vpc_name             = "shared-vpc-name"       # Often same as source if using Shared VPC
 dr_subnet_name          = "dr-subnet-name"
 dr_isolated_vpc_cidr    = "10.70.24.0/24"
+dr_psa_range_cidr       = "10.240.0.0/16"
 
 # ------------------------------------------------------------------------------
 # CMEK & Cross-Project

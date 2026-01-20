@@ -129,3 +129,9 @@ variable "infra_prod_project_id" {
   description = "The ID of the whitelisted project for CMEK-protected VMs."
   type        = string
 }
+
+variable "dr_psa_range_cidr" {
+  description = "The CIDR range for Private Services Access in the Isolated DR VPC."
+  type        = string
+  default     = "10.240.0.0/16"
+}

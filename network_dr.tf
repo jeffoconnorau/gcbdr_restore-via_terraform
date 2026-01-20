@@ -118,3 +118,31 @@ resource "google_compute_firewall" "allow_ssh_isolated" {
 
   source_ranges = ["35.235.240.0/20"] # IAP Range
 }
+
+# ------------------------------------------------------------------------------
+# Private Services Access (Isolated DR)
+# ------------------------------------------------------------------------------
+
+resource "google_compute_global_address" "dr_private_ip_address" {
+  count = var.create_isolated_dr_vpc ? 1 : 0
+
+  provider      = google-beta
+  project       = var.dr_project_id
+  name          = "dr-psa-range"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16 
+  address       = split("/", var.dr_psa_range_cidr)[0]
+  network       = google_compute_network.isolated_dr_vpc[0].id
+}
+
+resource "google_service_networking_connection" "dr_private_vpc_connection" {
+  count = var.create_isolated_dr_vpc ? 1 : 0
+
+  provider                = google-beta
+  network                 = google_compute_network.isolated_dr_vpc[0].id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.dr_private_ip_address[0].name]
+  
+  depends_on = [time_sleep.wait_for_apis]
+}
