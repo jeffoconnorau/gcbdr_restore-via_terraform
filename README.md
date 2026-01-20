@@ -116,9 +116,9 @@ terraform destroy \
 
 ### Cloud SQL Restore
 > [!NOTE]
-> As of provider version `7.16.0`, the `google_backup_dr_restore_workload` resource **only supports Compute Engine Instances and Disks**. 
-> 
-> **Native Cloud SQL restore is not yet supported in Terraform.** You must perform Cloud SQL restores via the Google Cloud Console or `gcloud` CLI.
+> Native Cloud SQL restore resources are not yet available in the Terraform provider. 
+> However, this project implements a **custom wrapper** (via `null_resource` and `gcloud`) to fully support automated Cloud SQL restores to the DR project during the test cycle.
+
 
 ### Shielded VM Policy Violation
 If you see `Error 412: Constraint constraints/compute.requireShieldedVm violated`, it is because the Backup recovery point lacks specific Shielded VM metadata.
