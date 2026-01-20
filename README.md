@@ -18,6 +18,8 @@ The project follows standard Terraform modular practices:
 ## Prerequisites
 
 - **Terraform**: >= 1.5.0
+- **Google Cloud SDK**: You must have `gcloud` installed and authenticated (`gcloud auth login`).
+  > **Note**: The restore scripts use your local `gcloud` credentials to dynamically discover backups. ensure your session is active.
 - **Google Cloud Projects**: You will need source, target (DR), and backup vault projects.
 
 > [!IMPORTANT]
