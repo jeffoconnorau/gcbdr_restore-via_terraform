@@ -32,7 +32,7 @@ resource "google_sql_database_instance" "restored_sql_pg" {
   backupdr_backup = data.external.latest_sql_backup[0].result.full_backup_id
 
   settings {
-    tier = "db-f1-micro"
+    tier = "db-custom-2-3840" # Upgraded for faster restore (f1-micro is too slow for restores)
     ip_configuration {
       ipv4_enabled    = false
       # For Same-Region Restore, we use the Shared VPC (Host Project) where the Vault has access
@@ -79,9 +79,10 @@ resource "google_sql_database_instance" "restored_sql_mysql" {
   backupdr_backup = data.external.latest_mysql_backup[0].result.full_backup_id
 
   settings {
-    tier = "db-f1-micro"
+    tier = "db-custom-2-3840" # Upgraded for faster restore (f1-micro is too slow for restores)
     ip_configuration {
       ipv4_enabled    = false
+      # For Same-Region Restore, we use the Shared VPC (Host Project) where the Vault has access
       private_network = "projects/${var.host_project_id}/global/networks/${var.vpc_name}"
     }
   }
