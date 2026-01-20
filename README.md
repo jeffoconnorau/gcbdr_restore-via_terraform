@@ -20,6 +20,10 @@ The project follows standard Terraform modular practices:
 - **Terraform**: >= 1.5.0
 - **Google Cloud Projects**: You will need source, target (DR), and backup vault projects.
 
+> [!IMPORTANT]
+> **CMEK Support Requirement**: Support for Customer-Managed Encryption Keys (CMEK) with Backup and DR is currently a **Restricted GA / Allowlist-only** feature. 
+> To test this capability, you must have your project explicitly allowlisted. Please contact your **Google Cloud Account Team** to request access before attempting to provision CMEK-protected backups.
+
 ## Configuration
 
 This project avoids hardcoding environment-specific values. 
