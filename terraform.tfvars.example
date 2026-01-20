@@ -1,0 +1,36 @@
+# ------------------------------------------------------------------------------
+# Source / Production Environment
+# ------------------------------------------------------------------------------
+
+project_id              = "source-project-id"
+region                  = "asia-southeast1"
+host_project_id         = "shared-vpc-host-project-id"
+vpc_name                = "shared-vpc-name"
+subnet_name             = "source-subnet-name"
+psa_range_prefix        = "10.200.0.0/16"
+
+# ------------------------------------------------------------------------------
+# DR / Target Environment
+# ------------------------------------------------------------------------------
+
+dr_project_id           = "dr-project-id"
+dr_region               = "asia-southeast2"
+dr_vpc_name             = "shared-vpc-name"       # Often same as source if using Shared VPC
+dr_subnet_name          = "dr-subnet-name"
+dr_isolated_vpc_cidr    = "10.70.24.0/24"
+
+# ------------------------------------------------------------------------------
+# CMEK & Cross-Project
+# ------------------------------------------------------------------------------
+
+gcbdr_project_id        = "backup-vault-project-id"
+infra_prod_project_id   = "cmek-source-project-id"
+
+# ------------------------------------------------------------------------------
+# Restore Configuration (Optional Overrides)
+# ------------------------------------------------------------------------------
+
+perform_dr_test         = true
+create_isolated_dr_vpc  = true
+provision_cloud_sql     = false
+restore_suffix          = "-dr"

@@ -5,31 +5,26 @@
 variable "project_id" {
   description = "The ID of the project in which to provision resources."
   type        = string
-  default     = "argo-svc-dev-3"
 }
 
 variable "region" {
   description = "The region to provision resources in."
   type        = string
-  default     = "asia-southeast1"
 }
 
 variable "host_project_id" {
   description = "The ID of the shared VPC host project."
   type        = string
-  default     = "argo-host-shared-vpc"
 }
 
 variable "vpc_name" {
   description = "The name of the shared VPC network."
   type        = string
-  default     = "vpc-jeffoconnor"
 }
 
 variable "subnet_name" {
   description = "The name of the subnetwork to use for VMs and SQL."
   type        = string
-  default     = "vpc-sub-sg-24"
 }
 
 # ------------------------------------------------------------------------------
@@ -57,7 +52,6 @@ variable "psa_range_name" {
 variable "psa_range_prefix" {
   description = "The CIDR prefix for the PSA reserved range (e.g., 10.100.0.0/16)."
   type        = string
-  default     = "10.200.0.0/16" # Example placeholder, user should ensure this doesn't overlap
 }
 
 # ------------------------------------------------------------------------------
@@ -67,26 +61,21 @@ variable "psa_range_prefix" {
 variable "dr_project_id" {
   description = "The ID of the DR/Target project."
   type        = string
-  default     = "argo-svc-dev-4"
 }
 
 variable "dr_region" {
   description = "The region for DR/Target resources."
   type        = string
-  default     = "asia-southeast2"
 }
 
 variable "dr_vpc_name" {
   description = "The name of the DR/Target VPC network."
   type        = string
-#  default     = "vpc-jeffoconnor" # Assuming same Shared VPC name if extended, or different. Leaving commented or null if unsure, but user asked for variable.
-  default     = "vpc-jeffoconnor" # Often same VPC name in shared VPC host
 }
 
 variable "dr_subnet_name" {
   description = "The name of the DR/Target subnetwork."
   type        = string
-  default     = "vpc-sub-jak-26"
 }
 
 variable "restore_backup_id" {
@@ -110,7 +99,6 @@ variable "create_isolated_dr_vpc" {
 variable "dr_isolated_vpc_cidr" {
   description = "The CIDR range for the Isolated DR Subnet. Should match production if testing IP retention."
   type        = string
-  default     = "10.70.24.0/24" # Example default, user can override to match prod
 }
 
 variable "dr_isolated_subnet_name" {
@@ -135,11 +123,9 @@ variable "perform_dr_test" {
 variable "gcbdr_project_id" {
   description = "The ID of the project to host the CMEK Backup Vault."
   type        = string
-  default     = "argo-svc-gcbdr"
 }
 
 variable "infra_prod_project_id" {
   description = "The ID of the whitelisted project for CMEK-protected VMs."
   type        = string
-  default     = "argo-svc-infra-prod"
 }
