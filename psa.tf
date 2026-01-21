@@ -1,8 +1,9 @@
 # ------------------------------------------------------------------------------
-# Private Services Access (PSA) Configuration
+# Private Services Access (PSA) Configuration - Source Environment
 # ------------------------------------------------------------------------------
-# These resources are created in the HOST project.
-# Requires permissions on the Host Project.
+# These resources are created in the SHARED VPC HOST PROJECT.
+# This enables connectivity for Source Cloud SQL instances attached to the Shared VPC.
+# (For DR Isolated VPC PSA, see network_dr.tf)
 # ------------------------------------------------------------------------------
 
 # Reserved IP Range for Services
