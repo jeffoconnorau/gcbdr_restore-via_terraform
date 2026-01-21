@@ -12,7 +12,7 @@ resource "google_compute_network" "isolated_dr_vpc" {
   count                   = var.create_isolated_dr_vpc ? 1 : 0
 }
 
-# ... (Subnet and Firewall resources remain)
+
 
 # ------------------------------------------------------------------------------
 # Cloud DNS Configuration (Isolated DR)
