@@ -1,8 +1,8 @@
 # ------------------------------------------------------------------------------
-# Cloud SQL Restore (Workaround via gcloud)
+# Native Cloud SQL Restore
 # ------------------------------------------------------------------------------
-# Native Terraform support for Cloud SQL restore is not available in provider 7.16.0.
-# We use a null_resource to trigger the restore via gcloud CLI.
+# Uses the native google_sql_database_instance resource with the
+# backupdr_backup argument to trigger a restore from GCBDR.
 
 data "external" "latest_sql_backup" {
   count = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
@@ -34,6 +34,11 @@ resource "google_sql_database_instance" "restored_sql_pg" {
   settings {
     tier              = "db-custom-2-3840" # Upgraded for faster restore (f1-micro is too slow for restores)
     availability_type = "ZONAL"          # Disable HA for Cost Savings/Test
+    
+    user_labels = {
+      dr = "test"
+    }
+
     ip_configuration {
       ipv4_enabled    = false
       # For Same-Region Restore, we use the Shared VPC (Host Project) where the Vault has access
@@ -82,6 +87,11 @@ resource "google_sql_database_instance" "restored_sql_mysql" {
   settings {
     tier              = "db-custom-2-3840" # Upgraded for faster restore (f1-micro is too slow for restores)
     availability_type = "ZONAL"          # Disable HA for Cost Savings/Test
+
+    user_labels = {
+      dr = "test"
+    }
+
     ip_configuration {
       ipv4_enabled    = false
       # For Same-Region Restore, we use the Shared VPC (Host Project) where the Vault has access
