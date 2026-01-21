@@ -37,14 +37,5 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_address[0].name]
   
-  # Ensure we have the Host Project ID correct here? 
-  # Actually `network` is the ID (projects/.../global/networks/...), so it implicitly targets that network.
-  # But the resource itself makes calls to Service Networking API.
-  # It usually runs in the project where the quota is consumed? 
-  # It should be sufficient to just point to the network if we have permissions.
-  # But explicit project is safer.
-  # However, `google_service_networking_connection` doesn't have a `project` field! 
-  # It uses the provider's project or infers from network? 
-  # Actually it DOES NOT have a project field. It manages the peering on the `network`.
-  # So it effectively modifies the Host Project Network.
+
 }
