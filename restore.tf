@@ -203,7 +203,7 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
     type    = "projects/${var.dr_project_id}/zones/${var.dr_region}-a/diskTypes/${var.disk_type}"
   }
   
-   lifecycle {
+  lifecycle {
     ignore_changes = [name] 
   }
 }
@@ -367,7 +367,6 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
   }
 }
 
-# 9. Attach Restored Rocky Disk to Restored VM
 # 9. Attach Restored Rocky Disk to Restored VM
 resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
   count = var.perform_dr_test ? 1 : 0
