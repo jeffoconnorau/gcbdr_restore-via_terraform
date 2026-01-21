@@ -144,7 +144,7 @@ resource "google_sql_database_instance" "sql_pg" {
   region           = var.region
 
   settings {
-    tier = "db-f1-micro"
+    tier = "db-custom-2-3840"
     ip_configuration {
       ipv4_enabled    = false
       private_network = data.google_compute_network.shared_vpc.self_link
@@ -162,7 +162,7 @@ resource "google_sql_database_instance" "sql_mysql" {
   region           = var.region
 
   settings {
-    tier = "db-f1-micro"
+    tier = "db-custom-2-3840"
     ip_configuration {
       ipv4_enabled    = false
       private_network = data.google_compute_network.shared_vpc.self_link
