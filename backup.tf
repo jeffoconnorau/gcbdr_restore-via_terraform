@@ -40,6 +40,24 @@ resource "time_sleep" "wait_for_vault" {
 }
 
 # ------------------------------------------------------------------------------
+# Standard Backup Vault in Remote Project (for Filestore)
+# ------------------------------------------------------------------------------
+resource "google_backup_dr_backup_vault" "vault_remote" {
+  provider                            = google-beta.gcbdr
+  project                             = var.gcbdr_project_id
+  location                            = var.region
+  backup_vault_id                     = "bv-${var.region}-remote-01"
+  backup_minimum_enforced_retention_duration = "86400s" # 1 day
+
+  depends_on = [time_sleep.wait_for_apis]
+}
+
+resource "time_sleep" "wait_for_vault_remote" {
+  depends_on = [google_backup_dr_backup_vault.vault_remote]
+  create_duration = "120s"
+}
+
+# ------------------------------------------------------------------------------
 # Backup Plan for VMs
 # ------------------------------------------------------------------------------
 
@@ -361,13 +379,14 @@ resource "google_backup_dr_backup_plan_association" "bpa_alloydb" {
 
 resource "google_backup_dr_backup_plan" "bp_filestore" {
   count          = var.provision_filestore ? 1 : 0
-  provider       = google-beta
+  provider       = google-beta.gcbdr
+  project        = var.gcbdr_project_id
   location       = var.region
   backup_plan_id = "bp-filestore-daily-3d-retention"
   resource_type  = "file.googleapis.com/Instance"
-  # backup_vault   = google_backup_dr_backup_vault.vault.id # Vault not supported for Filestore in this region/config
+  backup_vault   = google_backup_dr_backup_vault.vault_remote.id
 
-  depends_on = [time_sleep.wait_for_vault]
+  depends_on = [time_sleep.wait_for_vault_remote]
 
   backup_rules {
     rule_id              = "daily-backup"

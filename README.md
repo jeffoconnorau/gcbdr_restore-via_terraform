@@ -96,7 +96,16 @@ gcloud compute instances list --project=<your-dr-project-id>
 gcloud compute instances list --project=<your-cmek-source-project-id> --filter="labels.dr=test"
 ```
 
-### 5. Cleanup (Destroy Tests Only)
+### 5. If `terraform destroy` fails on Backup Plans due to "Association exists":
+1.  Manually delete the Association in GCP Console or via gcloud.
+2.  If that fails or you want to skip it, remove the resources from state:
+    ```bash
+    terraform state rm google_backup_dr_backup_plan.bp_vms
+    terraform state rm google_backup_dr_backup_plan_association.bpa_vm_debian
+    ```
+    Then run destroy again.
+
+### 6. Cleanup (Destroy Tests Only)
 To remove only the restored resources (leaving backups intact):
 
 ```bash
