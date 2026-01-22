@@ -365,7 +365,7 @@ resource "google_backup_dr_backup_plan" "bp_filestore" {
   location       = var.region
   backup_plan_id = "bp-filestore-daily-3d-retention"
   resource_type  = "file.googleapis.com/Instance"
-  backup_vault   = google_backup_dr_backup_vault.vault.id
+  # backup_vault   = google_backup_dr_backup_vault.vault.id # Vault not supported for Filestore in this region/config
 
   depends_on = [time_sleep.wait_for_vault]
 
