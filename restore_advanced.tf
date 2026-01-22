@@ -69,7 +69,7 @@ data "external" "latest_filestore_backup" {
 
   query = {
     project       = var.project_id
-    location      = "${var.region}-a" # Filestore lives in a Zone
+    location      = var.region # Discovery must be Regional, even if instance is Zonal
     instance_name = "filestore-source"
     vault_id      = "bv-${var.region}-01"
     vault_project = var.project_id
