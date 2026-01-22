@@ -169,7 +169,11 @@ resource "time_sleep" "wait_for_resources" {
     google_compute_instance.vm_rocky,
     # SQL
     google_sql_database_instance.sql_pg,
-    google_sql_database_instance.sql_mysql
+    google_sql_database_instance.sql_mysql,
+    # New Workloads
+    google_alloydb_cluster.source_alloydb_cluster,
+    google_alloydb_instance.source_alloydb_instance,
+    google_filestore_instance.source_filestore
   ]
 }
 
@@ -299,4 +303,86 @@ resource "google_backup_dr_backup_plan_association" "bpa_disk_debian" {
     time_sleep.wait_for_resources,
     google_compute_attached_disk.attach_min_debian
   ]
+}
+
+# ------------------------------------------------------------------------------
+# Backup Plan for AlloyDB
+# ------------------------------------------------------------------------------
+
+resource "google_backup_dr_backup_plan" "bp_alloydb" {
+  count          = var.provision_alloydb ? 1 : 0
+  provider       = google-beta
+  location       = var.region
+  backup_plan_id = "bp-alloydb-daily-3d-retention"
+  resource_type  = "alloydb.googleapis.com/Cluster"
+  backup_vault   = google_backup_dr_backup_vault.vault.id
+
+  depends_on = [time_sleep.wait_for_vault]
+
+  backup_rules {
+    rule_id              = "daily-backup"
+    backup_retention_days = 3
+
+    standard_schedule {
+      recurrence_type   = "DAILY"
+      backup_window {
+        start_hour_of_day = 14
+        end_hour_of_day   = 24
+      }
+      time_zone = "UTC"
+    }
+  }
+}
+
+resource "google_backup_dr_backup_plan_association" "bpa_alloydb" {
+  count         = var.provision_alloydb ? 1 : 0
+  provider      = google-beta
+  location      = var.region
+  resource_type = "alloydb.googleapis.com/Cluster"
+  resource      = google_alloydb_cluster.source_alloydb_cluster[0].id
+  backup_plan   = google_backup_dr_backup_plan.bp_alloydb[0].id
+  backup_plan_association_id = "bpa-alloydb-cluster"
+
+  depends_on = [time_sleep.wait_for_resources]
+}
+
+# ------------------------------------------------------------------------------
+# Backup Plan for Filestore
+# ------------------------------------------------------------------------------
+
+resource "google_backup_dr_backup_plan" "bp_filestore" {
+  count          = var.provision_filestore ? 1 : 0
+  provider       = google-beta
+  location       = var.region
+  backup_plan_id = "bp-filestore-daily-3d-retention"
+  resource_type  = "file.googleapis.com/Instance"
+  backup_vault   = google_backup_dr_backup_vault.vault.id
+
+  depends_on = [time_sleep.wait_for_vault]
+
+  backup_rules {
+    rule_id              = "daily-backup"
+    backup_retention_days = 3
+
+    standard_schedule {
+      recurrence_type   = "DAILY"
+      backup_window {
+        start_hour_of_day = 15
+        end_hour_of_day   = 24
+      }
+      time_zone = "UTC"
+    }
+  }
+}
+
+resource "google_backup_dr_backup_plan_association" "bpa_filestore" {
+  count         = var.provision_filestore ? 1 : 0
+  provider      = google-beta
+  location      = "${var.region}-a" # Filestore Association must match instance location (Zonal)
+  resource_type = "file.googleapis.com/Instance"
+  resource      = google_filestore_instance.source_filestore[0].id
+  backup_plan   = google_backup_dr_backup_plan.bp_filestore[0].id
+  backup_plan_association_id = "bpa-filestore"
+
+  depends_on = [time_sleep.wait_for_resources]
 }

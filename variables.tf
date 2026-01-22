@@ -38,7 +38,19 @@ variable "create_psa" {
 }
 
 variable "provision_cloud_sql" {
-  description = "Whether to provision Cloud SQL instances and their backup plans."
+  description = "Whether to provision Cloud SQL instances."
+  type        = bool
+  default     = true
+}
+
+variable "provision_alloydb" {
+  description = "Whether to provision AlloyDB Cluster and Instance."
+  type        = bool
+  default     = false
+}
+
+variable "provision_filestore" {
+  description = "Whether to provision Filestore Instance."
   type        = bool
   default     = false
 }

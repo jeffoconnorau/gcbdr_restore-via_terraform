@@ -65,6 +65,20 @@ resource "google_project_service" "dr_servicenetworking" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "alloydb" {
+  provider           = google-beta
+  project            = var.project_id
+  service            = "alloydb.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "filestore" {
+  provider           = google-beta
+  project            = var.project_id
+  service            = "file.googleapis.com"
+  disable_on_destroy = false
+}
+
 # ------------------------------------------------------------------------------
 # Wait for APIs to be enabled
 # ------------------------------------------------------------------------------
@@ -81,7 +95,10 @@ resource "time_sleep" "wait_for_apis" {
     google_project_service.dr_dns,
     google_project_service.kms,
     google_project_service.dr_kms,
-    google_project_service.dr_servicenetworking
+    google_project_service.dr_kms,
+    google_project_service.dr_servicenetworking,
+    google_project_service.alloydb,
+    google_project_service.filestore
   ]
 
   triggers = {
@@ -93,6 +110,8 @@ resource "time_sleep" "wait_for_apis" {
     dr_dns_id            = google_project_service.dr_dns.id
     kms_id               = google_project_service.kms.id
     dr_kms_id            = google_project_service.dr_kms.id
+    alloydb_id           = google_project_service.alloydb.id
+    filestore_id         = google_project_service.filestore.id
   }
 }
 
