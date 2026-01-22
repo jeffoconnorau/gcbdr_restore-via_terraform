@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 
 resource "google_compute_instance" "vm_debian" {
+  count        = var.provision_vms ? 1 : 0
   name         = "vm-debian"
   machine_type = "e2-micro"
   zone         = "${var.region}-a"
@@ -30,6 +31,7 @@ resource "google_compute_instance" "vm_debian" {
 }
 
 resource "google_compute_disk" "debian_data_disk" {
+  count = var.provision_vms ? 1 : 0
   name  = "vm-debian-data-disk"
   type  = var.disk_type
   zone  = "${var.region}-a"
@@ -39,11 +41,13 @@ resource "google_compute_disk" "debian_data_disk" {
 }
 
 resource "google_compute_attached_disk" "attach_min_debian" {
-  disk     = google_compute_disk.debian_data_disk.id
-  instance = google_compute_instance.vm_debian.id
+  count    = var.provision_vms ? 1 : 0
+  disk     = google_compute_disk.debian_data_disk[0].id
+  instance = google_compute_instance.vm_debian[0].id
 }
 
 resource "google_compute_instance" "vm_ubuntu" {
+  count        = var.provision_vms ? 1 : 0
   name         = "vm-ubuntu"
   machine_type = "e2-micro"
   zone         = "${var.region}-b"
@@ -66,6 +70,7 @@ resource "google_compute_instance" "vm_ubuntu" {
 }
 
 resource "google_compute_disk" "ubuntu_data_disk" {
+  count = var.provision_vms ? 1 : 0
   name  = "vm-ubuntu-data-disk"
   type  = var.disk_type
   zone  = "${var.region}-b"
@@ -75,11 +80,13 @@ resource "google_compute_disk" "ubuntu_data_disk" {
 }
 
 resource "google_compute_attached_disk" "attach_ubuntu_data" {
-  disk     = google_compute_disk.ubuntu_data_disk.id
-  instance = google_compute_instance.vm_ubuntu.id
+  count    = var.provision_vms ? 1 : 0
+  disk     = google_compute_disk.ubuntu_data_disk[0].id
+  instance = google_compute_instance.vm_ubuntu[0].id
 }
 
 resource "google_compute_instance" "vm_rocky" {
+  count        = var.provision_vms ? 1 : 0
   provider     = google-beta.infra_prod
   name         = "vm-rocky"
   machine_type = "e2-micro"
@@ -111,6 +118,7 @@ resource "google_compute_instance" "vm_rocky" {
 # ------------------------------------------------------------------------------
 
 resource "google_compute_disk" "rocky_data_disk" {
+  count    = var.provision_vms ? 1 : 0
   provider = google-beta.infra_prod
   name     = "vm-rocky-data-disk"
   type     = var.disk_type
@@ -128,9 +136,10 @@ resource "google_compute_disk" "rocky_data_disk" {
 }
 
 resource "google_compute_attached_disk" "attach_rocky_data" {
+  count    = var.provision_vms ? 1 : 0
   provider = google-beta.infra_prod
-  disk     = google_compute_disk.rocky_data_disk.id
-  instance = google_compute_instance.vm_rocky.id
+  disk     = google_compute_disk.rocky_data_disk[0].id
+  instance = google_compute_instance.vm_rocky[0].id
 }
 
 # ------------------------------------------------------------------------------

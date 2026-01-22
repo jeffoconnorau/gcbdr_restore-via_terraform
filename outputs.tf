@@ -15,9 +15,9 @@ output "backup_vault_id" {
 output "vm_instances" {
   description = "Map of created VM instances."
   value = {
-    debian = google_compute_instance.vm_debian.name
-    ubuntu = google_compute_instance.vm_ubuntu.name
-    rocky  = google_compute_instance.vm_rocky.name
+    debian = one(google_compute_instance.vm_debian[*].name)
+    ubuntu = one(google_compute_instance.vm_ubuntu[*].name)
+    rocky  = one(google_compute_instance.vm_rocky[*].name)
   }
 }
 
@@ -32,7 +32,7 @@ output "cloud_sql_instances" {
 output "backup_plans" {
   description = "Map of created Backup Plans."
   value = {
-    vms = google_backup_dr_backup_plan.bp_vms.name
+    vms = one(google_backup_dr_backup_plan.bp_vms[*].name)
     sql = one(google_backup_dr_backup_plan.bp_sql[*].name)
   }
 }

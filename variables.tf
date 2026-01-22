@@ -37,6 +37,12 @@ variable "create_psa" {
   default     = false
 }
 
+variable "provision_vms" {
+  description = "Whether to provision Compute Engine VMs and Disks."
+  type        = bool
+  default     = true
+}
+
 variable "provision_cloud_sql" {
   description = "Whether to provision Cloud SQL instances."
   type        = bool

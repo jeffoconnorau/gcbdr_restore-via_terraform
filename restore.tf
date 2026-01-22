@@ -4,11 +4,11 @@
 
 locals {
   # Map of VMs to restore -> Vault Name (Resource Name)
-  vms_to_restore = {
+  vms_to_restore = var.provision_vms ? {
     "vm-debian" = google_backup_dr_backup_vault.vault.backup_vault_id
     "vm-ubuntu" = google_backup_dr_backup_vault.vault.backup_vault_id
     # vm-rocky is handled separately for CMEK/Infra Prod restore
-  }
+  } : {}
 }
 
 # 1. Fetch Latest Backup ID (Dynamic) for EACH VM (Standard)
@@ -163,7 +163,7 @@ resource "null_resource" "apply_labels" {
 
 # 4. Fetch Latest Disk Backup
 data "external" "latest_disk_backup" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_vms ? 1 : 0
 
   program = ["bash", "${path.module}/scripts/get_latest_backup.sh"]
 
@@ -181,7 +181,7 @@ data "external" "latest_disk_backup" {
 # We need to check if it supports Disk restore (compute.googleapis.com/Disk).
 # Based on API docs, it does.
 resource "google_backup_dr_restore_workload" "restore_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_vms ? 1 : 0
 
   provider = google-beta
   location = var.region
@@ -211,7 +211,7 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
 # 6. Attach Restored Disk to Restored VM
 # We only do this for vm-debian as that's where the data disk belongs
 resource "google_compute_attached_disk" "attach_restored_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_vms ? 1 : 0
 
   disk     = google_backup_dr_restore_workload.restore_disk[0].target_resource[0].gcp_resource[0].gcp_resourcename
   instance = google_backup_dr_restore_workload.restore_vms["vm-debian"].target_resource[0].gcp_resource[0].gcp_resourcename
@@ -241,7 +241,7 @@ resource "google_project_iam_member" "vault_sa_infra_prod_permissions" {
 
 # Fetch Latest Backup for Rocky VM
 data "external" "latest_backup_rocky" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_vms ? 1 : 0
 
   program = ["bash", "${path.module}/scripts/get_latest_backup.sh"]
 
@@ -256,7 +256,7 @@ data "external" "latest_backup_rocky" {
 
 # Restore Rocky VM to Infra Prod
 resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_vms ? 1 : 0
 
   provider = google-beta.gcbdr
   location = var.region
@@ -316,7 +316,7 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
 
 # 7. Fetch Latest Rocky Disk Backup
 data "external" "latest_rocky_disk_backup" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_vms ? 1 : 0
 
   program = ["bash", "${path.module}/scripts/get_latest_backup.sh"]
 
@@ -331,7 +331,7 @@ data "external" "latest_rocky_disk_backup" {
 
 # 8. Restore Rocky Disk
 resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_vms ? 1 : 0
 
   provider = google-beta.gcbdr
   location = var.region
@@ -369,7 +369,7 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
 
 # 9. Attach Restored Rocky Disk to Restored VM
 resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_vms ? 1 : 0
   
   provider = google-beta.infra_prod 
 
@@ -388,7 +388,7 @@ resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
 
 # Workaround: Force-apply labels using gcloud since provider propagation is unreliable
 resource "null_resource" "tag_restored_vm" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_vms ? 1 : 0
   
   triggers = {
     # Force run on every apply to ensure labels are patched

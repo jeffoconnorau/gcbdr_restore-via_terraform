@@ -44,6 +44,7 @@ resource "time_sleep" "wait_for_vault" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan" "bp_vms" {
+  count          = var.provision_vms ? 1 : 0
   provider       = google-beta
   location       = var.region
   backup_plan_id = "bp-vms-daily-3d-retention"
@@ -73,6 +74,7 @@ resource "google_backup_dr_backup_plan" "bp_vms" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan" "bp_rocky_cmek" {
+  count          = var.provision_vms ? 1 : 0
   provider       = google-beta.gcbdr
   project        = var.gcbdr_project_id
   location       = var.region
@@ -98,6 +100,7 @@ resource "google_backup_dr_backup_plan" "bp_rocky_cmek" {
 }
 
 resource "google_backup_dr_backup_plan" "bp_rocky_disk_cmek" {
+  count          = var.provision_vms ? 1 : 0
   provider       = google-beta.gcbdr
   project        = var.gcbdr_project_id
   location       = var.region
@@ -182,45 +185,49 @@ resource "time_sleep" "wait_for_resources" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan_association" "bpa_vm_debian" {
+  count         = var.provision_vms ? 1 : 0
   provider      = google-beta
   location      = var.region
   resource_type = "compute.googleapis.com/Instance"
-  resource      = google_compute_instance.vm_debian.id
-  backup_plan   = google_backup_dr_backup_plan.bp_vms.id
+  resource      = google_compute_instance.vm_debian[0].id
+  backup_plan   = google_backup_dr_backup_plan.bp_vms[0].id
   backup_plan_association_id = "bpa-vm-debian"
 
   depends_on = [time_sleep.wait_for_resources]
 }
 
 resource "google_backup_dr_backup_plan_association" "bpa_vm_ubuntu" {
+  count         = var.provision_vms ? 1 : 0
   provider      = google-beta
   location      = var.region
   resource_type = "compute.googleapis.com/Instance"
-  resource      = google_compute_instance.vm_ubuntu.id
-  backup_plan   = google_backup_dr_backup_plan.bp_vms.id
+  resource      = google_compute_instance.vm_ubuntu[0].id
+  backup_plan   = google_backup_dr_backup_plan.bp_vms[0].id
   backup_plan_association_id = "bpa-vm-ubuntu"
 
   depends_on = [time_sleep.wait_for_resources]
 }
 
 resource "google_backup_dr_backup_plan_association" "bpa_vm_rocky" {
+  count         = var.provision_vms ? 1 : 0
   provider      = google-beta.infra_prod
   location      = var.region
   resource_type = "compute.googleapis.com/Instance"
-  resource      = google_compute_instance.vm_rocky.id
-  backup_plan   = google_backup_dr_backup_plan.bp_rocky_cmek.id
+  resource      = google_compute_instance.vm_rocky[0].id
+  backup_plan   = google_backup_dr_backup_plan.bp_rocky_cmek[0].id
   backup_plan_association_id = "bpa-vm-rocky-cmek"
 
   depends_on = [time_sleep.wait_for_vault_cmek]
 }
 
 resource "google_backup_dr_backup_plan_association" "bpa_disk_rocky" {
+  count         = var.provision_vms ? 1 : 0
   provider      = google-beta.infra_prod
   location      = var.region
   resource_type = "compute.googleapis.com/Disk"
-  resource      = google_compute_disk.rocky_data_disk.id
+  resource      = google_compute_disk.rocky_data_disk[0].id
     # Note: Disk Plan is separate
-  backup_plan   = google_backup_dr_backup_plan.bp_rocky_disk_cmek.id
+  backup_plan   = google_backup_dr_backup_plan.bp_rocky_disk_cmek[0].id
   backup_plan_association_id = "bpa-disk-rocky-cmek"
 
   depends_on = [
@@ -264,6 +271,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_sql_mysql" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan" "bp_disk" {
+  count          = var.provision_vms ? 1 : 0
   provider       = google-beta
   location       = var.region
   backup_plan_id = "bp-disk-daily-3d-retention"
@@ -292,11 +300,12 @@ resource "google_backup_dr_backup_plan" "bp_disk" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan_association" "bpa_disk_debian" {
+  count         = var.provision_vms ? 1 : 0
   provider      = google-beta
   location      = var.region
   resource_type = "compute.googleapis.com/Disk"
-  resource      = google_compute_disk.debian_data_disk.id
-  backup_plan   = google_backup_dr_backup_plan.bp_disk.id
+  resource      = google_compute_disk.debian_data_disk[0].id
+  backup_plan   = google_backup_dr_backup_plan.bp_disk[0].id
   backup_plan_association_id = "bpa-disk-debian"
 
   depends_on = [
