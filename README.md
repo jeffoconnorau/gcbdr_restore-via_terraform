@@ -1,6 +1,6 @@
-# Backup DR Beta Test - Terraform Project
+# Backup DR - Terraform Project
 
-This Terraform project provisions a test environment for Google Cloud Backup and DR (Beta) features, specifically focusing on **Cross-Project CMEK Backups** and **Split-Brain Restore Strategies**.
+This Terraform project provisions a test environment for Google Cloud Backup and DR features, specifically focusing on **Cross-Project CMEK Backups** and **Split-Brain Restore Strategies**.
 
 ## Project Structure
 
