@@ -116,9 +116,10 @@ terraform destroy \
 
 > [!WARNING]
 > **Full Destroy Caveats**: If you run `terraform destroy` on the entire project, you may encounter errors:
-> 1.  **Backup Vaults**: Cannot be destroyed if they contain backups (`NON_EMPTY_BACKUP_VAULT_DELETION`). You must manually delete the backups from the GCBDR Console first or accept that Vaults persist.
-> 2.  **Backup Plans**: May fail if Associations are not largely deleted first (`BACKUP_PLAN_ASSOCIATIONS_EXIST`). Re-running destroy usually fixes this.
-> 3.  **Service Networking**: May fail to release the IP range if Cloud SQL instances were just deleted (`Error code 9`). This typically resolves itself after a few minutes.
+> 1.  **Backup Vaults & KMS Keys**: These resources are soft-deleted by Google Cloud and cannot be fully purged immediately. To ensure you can repeatedly run `terraform apply` and `terraform destroy` without hitting "AlreadyExists" collisions, this codebase dynamically appends a 4-byte `random_id` suffix to your Vaults and KMS Key Rings.
+> 2.  **Backup Vault Backups**: Vaults cannot be fully destroyed if they contain backups (`NON_EMPTY_BACKUP_VAULT_DELETION`). You must manually delete the backups from the GCBDR Console first or accept that the soft-deleted Vaults persist.
+> 3.  **Backup Plans**: May fail if Associations are not largely deleted first (`BACKUP_PLAN_ASSOCIATIONS_EXIST`). Re-running destroy usually fixes this.
+> 4.  **Service Networking**: May fail to release the IP range if Cloud SQL instances were just deleted (`Error code 9`). This typically resolves itself after a few minutes.
 
 ## Known Limitations
 
