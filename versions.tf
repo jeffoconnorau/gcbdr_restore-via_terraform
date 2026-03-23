@@ -3,12 +3,13 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 6.0" // Using latest 6.x for modern features
+      version = "~> 7.16.0" 
     }
     google-beta = {
       source  = "hashicorp/google-beta"
       version = "7.16.0"
     }
+
     time = {
       source  = "hashicorp/time"
       version = "~> 0.9"
@@ -22,6 +23,24 @@ terraform {
 
 provider "google" {
   project = var.project_id
+  region  = var.region
+}
+
+provider "google" {
+  alias   = "dr"
+  project = var.dr_project_id
+  region  = var.dr_region
+}
+
+provider "google" {
+  alias   = "gcbdr"
+  project = var.gcbdr_project_id
+  region  = var.region
+}
+
+provider "google" {
+  alias   = "infra_prod"
+  project = var.infra_prod_project_id
   region  = var.region
 }
 

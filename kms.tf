@@ -2,22 +2,22 @@
 # Cloud KMS Resources for CMEK
 # ------------------------------------------------------------------------------
 
-# 1. Key Ring
-resource "google_kms_key_ring" "key_ring" {
-  name     = "kr-regional"
-  location = var.region
-  project  = var.project_id
-
-  depends_on = [time_sleep.wait_for_apis]
-}
-
 # Random suffix to avoid KMS Key name collisions (Keys are soft-deleted)
 resource "random_id" "kms_suffix" {
   byte_length = 4
   keepers = {
-    # Regenerate only if the KeyRing changes, or force rotation if needed
-    key_ring = google_kms_key_ring.key_ring.name
+    # Generate based on project ID instead of self-referencing key_ring name
+    project = var.project_id
   }
+}
+
+# 1. Key Ring
+resource "google_kms_key_ring" "key_ring" {
+  name     = "kr-regional-${random_id.kms_suffix.hex}"
+  location = var.region
+  project  = var.project_id
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # 2. Crypto Key

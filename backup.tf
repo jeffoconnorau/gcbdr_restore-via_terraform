@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_vault" "vault" {
-  provider                            = google-beta
+  provider                            = google
   location                            = var.region
   backup_vault_id                     = "bv-${var.region}-01"
   backup_minimum_enforced_retention_duration = "86400s" # 1 day
@@ -12,7 +12,7 @@ resource "google_backup_dr_backup_vault" "vault" {
 }
 
 resource "google_backup_dr_backup_vault" "vault_cmek" {
-  provider                            = google-beta.gcbdr
+  provider                            = google.gcbdr
   project                             = var.gcbdr_project_id
   location                            = var.region
   backup_vault_id                     = "bv-cmek-${var.region}-remote-01"
@@ -44,7 +44,7 @@ resource "time_sleep" "wait_for_vault" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan" "bp_vms" {
-  provider       = google-beta
+  provider       = google
   location       = var.region
   backup_plan_id = "bp-vms-daily-3d-retention"
   resource_type  = "compute.googleapis.com/Instance"
@@ -73,7 +73,7 @@ resource "google_backup_dr_backup_plan" "bp_vms" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan" "bp_rocky_cmek" {
-  provider       = google-beta.gcbdr
+  provider       = google.gcbdr
   project        = var.gcbdr_project_id
   location       = var.region
   backup_plan_id = "bp-rocky-cmek-daily-3d-remote"
@@ -98,7 +98,7 @@ resource "google_backup_dr_backup_plan" "bp_rocky_cmek" {
 }
 
 resource "google_backup_dr_backup_plan" "bp_rocky_disk_cmek" {
-  provider       = google-beta.gcbdr
+  provider       = google.gcbdr
   project        = var.gcbdr_project_id
   location       = var.region
   backup_plan_id = "bp-rocky-disk-cmek-daily-3d-remote"
@@ -128,7 +128,7 @@ resource "google_backup_dr_backup_plan" "bp_rocky_disk_cmek" {
 
 resource "google_backup_dr_backup_plan" "bp_sql" {
   count          = var.provision_cloud_sql ? 1 : 0
-  provider       = google-beta
+  provider       = google
   location       = var.region
   backup_plan_id = "bp-sql-daily-3d-retention"
   resource_type  = "sqladmin.googleapis.com/Instance"
@@ -178,7 +178,7 @@ resource "time_sleep" "wait_for_resources" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan_association" "bpa_vm_debian" {
-  provider      = google-beta
+  provider      = google
   location      = var.region
   resource_type = "compute.googleapis.com/Instance"
   resource      = google_compute_instance.vm_debian.id
@@ -189,7 +189,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_vm_debian" {
 }
 
 resource "google_backup_dr_backup_plan_association" "bpa_vm_ubuntu" {
-  provider      = google-beta
+  provider      = google
   location      = var.region
   resource_type = "compute.googleapis.com/Instance"
   resource      = google_compute_instance.vm_ubuntu.id
@@ -200,7 +200,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_vm_ubuntu" {
 }
 
 resource "google_backup_dr_backup_plan_association" "bpa_vm_rocky" {
-  provider      = google-beta.infra_prod
+  provider      = google.infra_prod
   location      = var.region
   resource_type = "compute.googleapis.com/Instance"
   resource      = google_compute_instance.vm_rocky.id
@@ -211,7 +211,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_vm_rocky" {
 }
 
 resource "google_backup_dr_backup_plan_association" "bpa_disk_rocky" {
-  provider      = google-beta.infra_prod
+  provider      = google.infra_prod
   location      = var.region
   resource_type = "compute.googleapis.com/Disk"
   resource      = google_compute_disk.rocky_data_disk.id
@@ -233,7 +233,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_disk_rocky" {
 
 resource "google_backup_dr_backup_plan_association" "bpa_sql_pg" {
   count         = var.provision_cloud_sql ? 1 : 0
-  provider      = google-beta
+  provider      = google
   location      = var.region
   resource_type = "sqladmin.googleapis.com/Instance"
   resource      = "projects/${var.project_id}/instances/${google_sql_database_instance.sql_pg[0].name}"
@@ -245,7 +245,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_sql_pg" {
 
 resource "google_backup_dr_backup_plan_association" "bpa_sql_mysql" {
   count         = var.provision_cloud_sql ? 1 : 0
-  provider      = google-beta
+  provider      = google
   location      = var.region
   resource_type = "sqladmin.googleapis.com/Instance"
   resource      = "projects/${var.project_id}/instances/${google_sql_database_instance.sql_mysql[0].name}"
@@ -260,7 +260,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_sql_mysql" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan" "bp_disk" {
-  provider       = google-beta
+  provider       = google
   location       = var.region
   backup_plan_id = "bp-disk-daily-3d-retention"
   resource_type  = "compute.googleapis.com/Disk"
@@ -288,7 +288,7 @@ resource "google_backup_dr_backup_plan" "bp_disk" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan_association" "bpa_disk_debian" {
-  provider      = google-beta
+  provider      = google
   location      = var.region
   resource_type = "compute.googleapis.com/Disk"
   resource      = google_compute_disk.debian_data_disk.id

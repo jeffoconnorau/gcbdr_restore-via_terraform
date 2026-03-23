@@ -10,7 +10,7 @@
 resource "google_compute_global_address" "private_ip_address" {
   count = var.create_psa ? 1 : 0
 
-  provider      = google-beta
+  provider      = google
   project       = var.host_project_id # HOST PROJECT
   name          = var.psa_range_name
   purpose       = "VPC_PEERING"
@@ -32,7 +32,7 @@ resource "google_compute_global_address" "private_ip_address" {
 resource "google_service_networking_connection" "private_vpc_connection" {
   count = var.create_psa ? 1 : 0
 
-  provider                = google-beta
+  provider                = google
   network                 = data.google_compute_network.shared_vpc.id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_address[0].name]

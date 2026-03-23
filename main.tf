@@ -80,7 +80,7 @@ resource "google_compute_attached_disk" "attach_ubuntu_data" {
 }
 
 resource "google_compute_instance" "vm_rocky" {
-  provider     = google-beta.infra_prod
+  provider     = google.infra_prod
   name         = "vm-rocky"
   machine_type = "e2-micro"
   zone         = "${var.region}-c"
@@ -111,7 +111,7 @@ resource "google_compute_instance" "vm_rocky" {
 # ------------------------------------------------------------------------------
 
 resource "google_compute_disk" "rocky_data_disk" {
-  provider = google-beta.infra_prod
+  provider = google.infra_prod
   name     = "vm-rocky-data-disk"
   type     = var.disk_type
   zone     = "${var.region}-c"
@@ -128,7 +128,7 @@ resource "google_compute_disk" "rocky_data_disk" {
 }
 
 resource "google_compute_attached_disk" "attach_rocky_data" {
-  provider = google-beta.infra_prod
+  provider = google.infra_prod
   disk     = google_compute_disk.rocky_data_disk.id
   instance = google_compute_instance.vm_rocky.id
 }

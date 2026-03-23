@@ -29,7 +29,7 @@ data "external" "latest_backup" {
 # 2. Grant Permissions for Cross-Project Restore
 # The Backup Vault Service Agent needs permissions in the Target Project
 resource "google_project_iam_member" "vault_sa_target_permissions" {
-  provider = google-beta
+  provider = google
   project  = var.dr_project_id
   role     = "roles/compute.instanceAdmin.v1"
   member   = "serviceAccount:${google_backup_dr_backup_vault.vault.service_account}"
@@ -96,7 +96,7 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
 
 # Grant Vault SA permission to use Shared VPC Subnets in Host Project
 resource "google_project_iam_member" "vault_sa_host_network_permissions" {
-  provider = google-beta
+  provider = google
   project  = var.host_project_id
   role     = "roles/compute.networkUser"
   member   = "serviceAccount:${google_backup_dr_backup_vault.vault.service_account}"
@@ -104,7 +104,7 @@ resource "google_project_iam_member" "vault_sa_host_network_permissions" {
 
 # Grant CMEK Vault SA permission to use Shared VPC Subnets in Host Project (for Rocky Restore)
 resource "google_project_iam_member" "vault_cmek_sa_host_network_permissions" {
-  provider = google-beta
+  provider = google
   project  = var.host_project_id
   role     = "roles/compute.networkUser"
   member   = "serviceAccount:${google_backup_dr_backup_vault.vault_cmek.service_account}"
@@ -114,7 +114,7 @@ resource "google_project_iam_member" "vault_cmek_sa_host_network_permissions" {
 # Organization Policy config: Disable Shielded VM Requirement for Restore
 # ------------------------------------------------------------------------------
 resource "google_project_organization_policy" "disable_shielded_vm_check" {
-  provider   = google-beta
+  provider   = google
   project    = var.dr_project_id
   constraint = "constraints/compute.requireShieldedVm"
 
@@ -233,7 +233,7 @@ resource "google_compute_attached_disk" "attach_restored_disk" {
 # Grant Permissions for Restore to Infra Prod
 # The Backup Vault Service Agent needs permissions in the Infra Prod Project to restore
 resource "google_project_iam_member" "vault_sa_infra_prod_permissions" {
-  provider = google-beta.infra_prod
+  provider = google.infra_prod
   project  = var.infra_prod_project_id
   role     = "roles/compute.instanceAdmin.v1"
   member   = "serviceAccount:${google_backup_dr_backup_vault.vault_cmek.service_account}"
@@ -371,7 +371,7 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
 resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
   count = var.perform_dr_test ? 1 : 0
   
-  provider = google-beta.infra_prod 
+  provider = google.infra_prod 
 
   disk     = google_backup_dr_restore_workload.restore_rocky_disk[0].target_resource[0].gcp_resource[0].gcp_resourcename
   instance = google_backup_dr_restore_workload.restore_vm_rocky[0].target_resource[0].gcp_resource[0].gcp_resourcename

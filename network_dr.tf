@@ -4,7 +4,7 @@
 # Created only if var.create_isolated_dr_vpc is true.
 
 resource "google_compute_network" "isolated_dr_vpc" {
-  provider                = google-beta
+  provider                = google
   project                 = var.dr_project_id
   name                    = "isolated-dr-vpc"
   auto_create_subnetworks = false
@@ -20,7 +20,7 @@ resource "google_compute_network" "isolated_dr_vpc" {
 
 # DNS Policy to enable logging and ensure inbound forwarding if needed
 resource "google_dns_policy" "dr_policy" {
-  provider = google-beta
+  provider = google
   project  = var.dr_project_id
   name     = "dr-isolated-policy"
   
@@ -38,7 +38,7 @@ resource "google_dns_policy" "dr_policy" {
 
 # Private Zone for DR Verification
 resource "google_dns_managed_zone" "dr_test_zone" {
-  provider    = google-beta
+  provider    = google
   project     = var.dr_project_id
   name        = "dr-test-internal"
   dns_name    = "dr.test.internal."
@@ -58,7 +58,7 @@ resource "google_dns_managed_zone" "dr_test_zone" {
 
 # Sample A Record for verification
 resource "google_dns_record_set" "dr_test_record" {
-  provider     = google-beta
+  provider     = google
   project      = var.dr_project_id
   name         = "verification.dr.test.internal."
   managed_zone = google_dns_managed_zone.dr_test_zone[0].name
@@ -70,7 +70,7 @@ resource "google_dns_record_set" "dr_test_record" {
 }
 
 resource "google_compute_subnetwork" "isolated_dr_subnet" {
-  provider                 = google-beta
+  provider                 = google
   project                  = var.dr_project_id
   name                     = var.dr_isolated_subnet_name
   ip_cidr_range            = var.dr_isolated_vpc_cidr
@@ -82,7 +82,7 @@ resource "google_compute_subnetwork" "isolated_dr_subnet" {
 
 # Firewall Rule to allow internal communication within Isolated VPC
 resource "google_compute_firewall" "allow_internal_isolated" {
-  provider = google-beta
+  provider = google
   project  = var.dr_project_id
   name     = "allow-internal-isolated"
   network  = google_compute_network.isolated_dr_vpc[0].name
@@ -105,7 +105,7 @@ resource "google_compute_firewall" "allow_internal_isolated" {
 
 # Firewall Rule to allow SSH (for verification)
 resource "google_compute_firewall" "allow_ssh_isolated" {
-  provider = google-beta
+  provider = google
   project  = var.dr_project_id
   name     = "allow-ssh-isolated"
   network  = google_compute_network.isolated_dr_vpc[0].name
@@ -126,7 +126,7 @@ resource "google_compute_firewall" "allow_ssh_isolated" {
 resource "google_compute_global_address" "dr_private_ip_address" {
   count = var.create_isolated_dr_vpc ? 1 : 0
 
-  provider      = google-beta
+  provider      = google
   project       = var.dr_project_id
   name          = "dr-psa-range"
   purpose       = "VPC_PEERING"
@@ -139,7 +139,7 @@ resource "google_compute_global_address" "dr_private_ip_address" {
 resource "google_service_networking_connection" "dr_private_vpc_connection" {
   count = var.create_isolated_dr_vpc ? 1 : 0
 
-  provider                = google-beta
+  provider                = google
   network                 = google_compute_network.isolated_dr_vpc[0].id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.dr_private_ip_address[0].name]

@@ -3,63 +3,63 @@
 # ------------------------------------------------------------------------------
 
 resource "google_project_service" "backupdr" {
-  provider = google-beta
+  provider = google
   project  = var.project_id
   service  = "backupdr.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "compute" {
-  provider = google-beta
+  provider = google
   project  = var.project_id
   service  = "compute.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "servicenetworking" {
-  provider = google-beta
+  provider = google
   project  = var.project_id
   service  = "servicenetworking.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "sqladmin" {
-  provider = google-beta
+  provider = google
   project  = var.project_id
   service  = "sqladmin.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "dns" {
-  provider           = google-beta
+  provider           = google
   project            = var.project_id
   service            = "dns.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "dr_dns" {
-  provider           = google-beta
+  provider           = google
   project            = var.dr_project_id
   service            = "dns.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "kms" {
-  provider           = google-beta
+  provider           = google
   project            = var.project_id
   service            = "cloudkms.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "dr_kms" {
-  provider           = google-beta
+  provider           = google
   project            = var.dr_project_id
   service            = "cloudkms.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "dr_servicenetworking" {
-  provider           = google-beta
+  provider           = google
   project            = var.dr_project_id
   service            = "servicenetworking.googleapis.com"
   disable_on_destroy = false
@@ -101,7 +101,7 @@ resource "time_sleep" "wait_for_apis" {
 # ------------------------------------------------------------------------------
 
 resource "google_project_organization_policy" "storage_policy_source" {
-  provider   = google-beta
+  provider   = google
   project    = var.project_id
   constraint = "constraints/compute.storageResourceUseRestrictions"
   
