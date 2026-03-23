@@ -2,10 +2,18 @@
 # Backup Vault
 # ------------------------------------------------------------------------------
 
+# Random suffix to prevent historic vault name collisions
+resource "random_id" "vault_suffix" {
+  byte_length = 4
+  keepers = {
+    project = var.project_id
+  }
+}
+
 resource "google_backup_dr_backup_vault" "vault" {
   provider                            = google
   location                            = var.region
-  backup_vault_id                     = "bv-${var.region}-01"
+  backup_vault_id                     = "bv-${var.region}-${random_id.vault_suffix.hex}"
   backup_minimum_enforced_retention_duration = "86400s" # 1 day
 
   depends_on = [time_sleep.wait_for_apis]
@@ -15,7 +23,7 @@ resource "google_backup_dr_backup_vault" "vault_cmek" {
   provider                            = google.gcbdr
   project                             = var.gcbdr_project_id
   location                            = var.region
-  backup_vault_id                     = "bv-cmek-${var.region}-remote-01"
+  backup_vault_id                     = "bv-cmek-${var.region}-remote-${random_id.vault_suffix.hex}"
   backup_minimum_enforced_retention_duration = "86400s" # 1 day
 
   encryption_config {

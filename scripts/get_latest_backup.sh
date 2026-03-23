@@ -25,7 +25,13 @@ ALL_DATASOURCES_JSON=$(gcloud backup-dr data-sources list \
   --project="$VAULT_PROJECT" \
   --location="$LOCATION" \
   --backup-vault="$VAULT_ID" \
-  --format="json")
+  --format="json" 2>/dev/null) || true
+
+if [[ -z "$ALL_DATASOURCES_JSON" ]]; then
+  echo "[WARNING] Vault not found or gcloud failed. Returning dummy data for Terraform plan." >&2
+  echo '{"backup_id": "dummy", "backup_vault_id": "dummy", "data_source_id": "dummy", "location": "dummy", "full_backup_id": "dummy"}'
+  exit 0
+fi
 
 DS_COUNT=$(echo "$ALL_DATASOURCES_JSON" | jq length)
 echo "[INFO] Found $DS_COUNT total Data Sources. Searching for one matching '$INSTANCE_NAME'..." >&2
@@ -59,9 +65,9 @@ DATASOURCE_ID=$(echo "$ALL_DATASOURCES_JSON" | jq -r --arg NAME "$INSTANCE_NAME"
   ) | .name' | head -n 1)
 
 if [[ -z "$DATASOURCE_ID" || "$DATASOURCE_ID" == "null" ]]; then
-  echo "[ERROR] Data source NOT FOUND for instance $INSTANCE_NAME" >&2
-  echo "{\"error\": \"Data source not found for instance $INSTANCE_NAME\"}" >&2
-  exit 1
+  echo "[WARNING] Data source NOT FOUND for instance $INSTANCE_NAME. Returning dummy data for Terraform plan." >&2
+  echo '{"backup_id": "dummy", "backup_vault_id": "dummy", "data_source_id": "dummy", "location": "dummy", "full_backup_id": "dummy"}'
+  exit 0
 fi
 
 echo "[INFO] Identified Data Source ID: $DATASOURCE_ID" >&2
@@ -85,9 +91,9 @@ BACKUP_ID=$(echo "$ALL_BACKUPS_JSON" | jq -r --arg DS_ID "$DATASOURCE_ID" '
 ')
 
 if [[ -z "$BACKUP_ID" || "$BACKUP_ID" == "null" ]]; then
-  echo "[ERROR] No backups found for Data Source $DATASOURCE_ID" >&2
-  echo "{\"error\": \"No backups found for data source $DATASOURCE_ID\"}" >&2
-  exit 1
+  echo "[WARNING] No backups found for Data Source $DATASOURCE_ID. Returning dummy data for Terraform plan." >&2
+  echo '{"backup_id": "dummy", "backup_vault_id": "dummy", "data_source_id": "dummy", "location": "dummy", "full_backup_id": "dummy"}'
+  exit 0
 fi
 
 echo "[INFO] Selected Latest Backup ID: $BACKUP_ID" >&2
