@@ -406,3 +406,78 @@ resource "null_resource" "tag_restored_vm" {
 
   depends_on = [google_backup_dr_restore_workload.restore_vm_rocky]
 }
+
+# ------------------------------------------------------------------------------
+# Automated Cleanup Hooks for Terraform Destroy
+# ------------------------------------------------------------------------------
+# Because google_backup_dr_restore_workload only manages the "Restore Job" API call, 
+# the resulting Compute Engine VMs and Disks are unmanaged and persist after the job is destroyed.
+# This blocks terraform from destroying the subnetwork. These hooks force-delete them.
+
+resource "null_resource" "cleanup_restored_vms" {
+  for_each = var.perform_dr_test ? local.vms_to_restore : {}
+
+  triggers = {
+    project = var.dr_project_id
+    zone    = "${var.dr_region}-a"
+    vm_name = "${each.key}${var.restore_suffix}"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "gcloud compute instances delete ${self.triggers.vm_name} --project=${self.triggers.project} --zone=${self.triggers.zone} --quiet || true"
+  }
+
+  depends_on = [google_backup_dr_restore_workload.restore_vms]
+}
+
+resource "null_resource" "cleanup_restored_disk" {
+  count = var.perform_dr_test ? 1 : 0
+
+  triggers = {
+    project   = var.dr_project_id
+    zone      = "${var.dr_region}-a"
+    disk_name = "vm-debian-data-disk${var.restore_suffix}"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "gcloud compute disks delete ${self.triggers.disk_name} --project=${self.triggers.project} --zone=${self.triggers.zone} --quiet || true"
+  }
+
+  depends_on = [google_backup_dr_restore_workload.restore_disk]
+}
+
+resource "null_resource" "cleanup_restored_rocky_vm" {
+  count = var.perform_dr_test ? 1 : 0
+
+  triggers = {
+    project = var.infra_prod_project_id
+    zone    = "${var.region}-c"
+    vm_name = "vm-rocky${var.restore_suffix}"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "gcloud compute instances delete ${self.triggers.vm_name} --project=${self.triggers.project} --zone=${self.triggers.zone} --quiet || true"
+  }
+
+  depends_on = [google_backup_dr_restore_workload.restore_vm_rocky]
+}
+
+resource "null_resource" "cleanup_restored_rocky_disk" {
+  count = var.perform_dr_test ? 1 : 0
+
+  triggers = {
+    project   = var.infra_prod_project_id
+    zone      = "${var.region}-c"
+    disk_name = "vm-rocky-data-disk${var.restore_suffix}"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "gcloud compute disks delete ${self.triggers.disk_name} --project=${self.triggers.project} --zone=${self.triggers.zone} --quiet || true"
+  }
+
+  depends_on = [google_backup_dr_restore_workload.restore_rocky_disk]
+}
