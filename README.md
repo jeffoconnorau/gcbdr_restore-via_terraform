@@ -80,7 +80,10 @@ terraform apply \
 *Note: Includes wait timers (approx. 2-3 mins) for API enablement and IAM propagation.*
 
 ### 3. Perform DR Test (Restore Phase)
-Once the baseline infrastructure is deployed and **the backups have successfully completed**, you can then trigger the restore process. This explicitly uses `perform_dr_test=true` to dynamically find the latest backups and restore them according to the Split-Brain strategy.
+> [!NOTE]
+> The Terraform configurations define a scheduled daily backup window (e.g., `12:00 - 24:00 UTC`). If you want to test the restore process immediately after provisioning without waiting hours for the automated window, you must manually trigger an "On-Demand Backup" for each Data Source via the Google Cloud Console (make sure to check both your source and GCBDR projects).
+
+Once the baseline infrastructure is deployed and **the initial backups have successfully completed**, you can then trigger the restore process. This explicitly uses `perform_dr_test=true` to dynamically find the latest backups and restore them according to the Split-Brain strategy.
 
 ```bash
 terraform apply \
