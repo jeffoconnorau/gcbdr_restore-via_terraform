@@ -66,19 +66,26 @@ terraform init
 ```
 
 ### 2. Provision Resources (Backup Phase)
+> [!IMPORTANT]
+> **Do not begin with `perform_dr_test=true`**. The infrastructure, backup vault, and backup images do not exist yet! You must provision the baseline infrastructure first and wait for the initial backups to complete before executing a restore test.
+
 Apply the base configuration to create VMs, enable APIs, and configure Backup Plans.
 ```bash
-terraform apply
+terraform apply \
+  -var="perform_dr_test=false" \
+  -var="provision_cloud_sql=true" \
+  -var="create_isolated_dr_vpc=true" \
+  -var="restore_suffix=-dr"
 ```
 *Note: Includes wait timers (approx. 2-3 mins) for API enablement and IAM propagation.*
 
 ### 3. Perform DR Test (Restore Phase)
-To trigger the restore process, use the specific DR variables. This will find the latest backups and restore them according to the Split-Brain strategy.
+Once the baseline infrastructure is deployed and **the backups have successfully completed**, you can then trigger the restore process. This explicitly uses `perform_dr_test=true` to dynamically find the latest backups and restore them according to the Split-Brain strategy.
 
 ```bash
 terraform apply \
   -var="perform_dr_test=true" \
-  -var="provision_cloud_sql=false" \
+  -var="provision_cloud_sql=true" \
   -var="create_isolated_dr_vpc=true" \
   -var="restore_suffix=-dr"
 ```
