@@ -126,6 +126,8 @@ resource "time_sleep" "wait_for_apis" {
   depends_on = [
     google_project_service.backupdr,
     google_project_service.dr_backupdr,
+    google_project_service_identity.dr_backupdr_sa,
+    google_project_service_identity.dr_alloydb_sa,
     google_project_service.compute,
     google_project_service.servicenetworking,
     google_project_service.sqladmin,

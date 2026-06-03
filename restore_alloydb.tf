@@ -50,6 +50,8 @@ resource "google_project_iam_member" "dr_alloydb_sa_source_backupdr_permissions"
   project  = var.project_id
   role     = "roles/backupdr.restoreUser"
   member   = "serviceAccount:${google_project_service_identity.dr_alloydb_sa.email}"
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # Grant DR Backup DR Service Agent permission to read backups from GCBDR Vault in Source Project
@@ -59,6 +61,8 @@ resource "google_project_iam_member" "dr_backupdr_sa_source_backupdr_permissions
   project  = var.project_id
   role     = "roles/backupdr.restoreUser"
   member   = "serviceAccount:${google_project_service_identity.dr_backupdr_sa.email}"
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # Restore the AlloyDB Cluster from GCBDR
