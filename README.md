@@ -98,6 +98,21 @@ terraform apply \
   -var="restore_suffix=-dr"
 ```
 
+#### Optimizing Restore Concurrency
+By default, the Terraform CLI executes up to **10 operations concurrently**. Because GCBDR restore plans involve wait timers, IAM propagation checks, and database creations, standard execution can result in queued resource states.
+
+To run restores in parallel and kickstart all jobs concurrently (especially useful for mass restoration tasks), increase the CLI concurrency limit using the `-parallelism` flag:
+
+```bash
+terraform apply \
+  -var="perform_dr_test=true" \
+  -var="provision_cloud_sql=true" \
+  -var="create_isolated_dr_vpc=true" \
+  -var="restore_suffix=-dr" \
+  -parallelism=30
+```
+*Note: Because `-parallelism` is an execution engine flag for the Terraform CLI, it cannot be defined inside `variables.tf` or `terraform.tfvars` and must be passed as a command-line argument.*
+
 ### 4. Verification
 After the apply completes:
 
