@@ -41,7 +41,7 @@ resource "google_alloydb_cluster" "restored_alloydb_cluster" {
 
   # Native GCBDR Restore Block
   restore_backupdr_backup_source {
-    backupdr_backup = data.external.latest_alloydb_backup[0].result.full_backup_id
+    backup = data.external.latest_alloydb_backup[0].result.full_backup_id
   }
 
   deletion_protection = false
