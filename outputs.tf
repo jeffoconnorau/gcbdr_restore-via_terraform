@@ -36,3 +36,8 @@ output "backup_plans" {
     sql = one(google_backup_dr_backup_plan.bp_sql[*].name)
   }
 }
+
+output "recommended_parallelism" {
+  description = "The parallelism level used for DR restores."
+  value       = var.parallelism
+}

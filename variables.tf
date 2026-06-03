@@ -147,3 +147,9 @@ variable "provision_alloydb" {
   type        = bool
   default     = false
 }
+
+variable "parallelism" {
+  description = "The number of concurrent operations for Terraform. Used by the wrapper script to run restores in parallel."
+  type        = number
+  default     = 30
+}

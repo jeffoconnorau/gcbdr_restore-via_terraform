@@ -37,3 +37,4 @@ provision_cloud_sql     = false
 provision_filestore     = false
 provision_alloydb       = false
 restore_suffix          = "-dr"
+parallelism             = 30
