@@ -27,6 +27,31 @@ resource "google_project_iam_member" "vault_sa_dr_alloydb_permissions" {
   member   = "serviceAccount:${google_backup_dr_backup_vault.vault.service_account}"
 }
 
+resource "google_project_iam_member" "vault_sa_dr_alloydb_operator" {
+  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  provider = google
+  project  = var.dr_project_id
+  role     = "roles/backupdr.alloydbOperator"
+  member   = "serviceAccount:${google_backup_dr_backup_vault.vault.service_account}"
+}
+
+resource "google_project_iam_member" "vault_sa_dr_sa_user" {
+  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  provider = google
+  project  = var.dr_project_id
+  role     = "roles/iam.serviceAccountUser"
+  member   = "serviceAccount:${google_backup_dr_backup_vault.vault.service_account}"
+}
+
+# Grant DR AlloyDB Service Agent permission to read backups from GCBDR Vault in Source Project
+resource "google_project_iam_member" "dr_alloydb_sa_source_backupdr_permissions" {
+  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  provider = google
+  project  = var.project_id
+  role     = "roles/backupdr.restoreUser"
+  member   = "serviceAccount:service-${data.google_project.dr_project.number}@gcp-sa-alloydb.iam.gserviceaccount.com"
+}
+
 # Restore the AlloyDB Cluster from GCBDR
 resource "google_alloydb_cluster" "restored_alloydb_cluster" {
   count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0

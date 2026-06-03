@@ -8,3 +8,7 @@ data "google_compute_subnetwork" "subnet" {
   project = var.host_project_id
   region  = var.region
 }
+
+data "google_project" "dr_project" {
+  project_id = var.dr_project_id
+}
