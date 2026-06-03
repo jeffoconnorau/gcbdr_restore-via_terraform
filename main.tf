@@ -194,7 +194,7 @@ resource "google_filestore_instance" "fs_share" {
   }
 
   networks {
-    network      = data.google_compute_network.shared_vpc.name
+    network      = data.google_compute_network.shared_vpc.id
     modes        = ["MODE_IPV4"]
     connect_mode = "PRIVATE_SERVICE_ACCESS"
   }

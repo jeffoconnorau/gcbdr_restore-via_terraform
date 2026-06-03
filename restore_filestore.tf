@@ -44,7 +44,7 @@ resource "google_filestore_instance" "restored_fs_share" {
   }
 
   networks {
-    network      = var.create_isolated_dr_vpc ? google_compute_network.isolated_dr_vpc[0].name : var.dr_vpc_name
+    network      = var.create_isolated_dr_vpc ? google_compute_network.isolated_dr_vpc[0].id : "projects/${var.host_project_id}/global/networks/${var.dr_vpc_name}"
     modes        = ["MODE_IPV4"]
     connect_mode = "PRIVATE_SERVICE_ACCESS"
   }
