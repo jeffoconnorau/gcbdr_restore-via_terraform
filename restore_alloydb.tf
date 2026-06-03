@@ -83,6 +83,28 @@ resource "google_project_iam_member" "caller_source_backupdr_permissions" {
   depends_on = [time_sleep.wait_for_apis]
 }
 
+# Grant DR AlloyDB Service Agent permission to view backups in Source Project
+resource "google_project_iam_member" "dr_alloydb_sa_source_alloydb_viewer" {
+  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  provider = google
+  project  = var.project_id
+  role     = "roles/alloydb.viewer"
+  member   = "serviceAccount:${google_project_service_identity.dr_alloydb_sa.email}"
+
+  depends_on = [time_sleep.wait_for_apis]
+}
+
+# Grant the caller permissions in the source project to view AlloyDB resources
+resource "google_project_iam_member" "caller_source_alloydb_viewer" {
+  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  provider = google
+  project  = var.project_id
+  role     = "roles/alloydb.viewer"
+  member   = local.caller_member
+
+  depends_on = [time_sleep.wait_for_apis]
+}
+
 # Restore the AlloyDB Cluster from GCBDR
 resource "google_alloydb_cluster" "restored_alloydb_cluster" {
   count    = (var.perform_dr_test && var.provision_alloydb && try(one(data.external.latest_alloydb_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
@@ -108,8 +130,10 @@ resource "google_alloydb_cluster" "restored_alloydb_cluster" {
     google_project_iam_member.vault_sa_dr_alloydb_operator,
     google_project_iam_member.vault_sa_dr_sa_user,
     google_project_iam_member.dr_alloydb_sa_source_backupdr_permissions,
+    google_project_iam_member.dr_alloydb_sa_source_alloydb_viewer,
     google_project_iam_member.dr_backupdr_sa_source_backupdr_permissions,
     google_project_iam_member.caller_source_backupdr_permissions,
+    google_project_iam_member.caller_source_alloydb_viewer,
     google_service_networking_connection.dr_private_vpc_connection
   ]
 }
