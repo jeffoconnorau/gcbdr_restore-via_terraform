@@ -312,7 +312,7 @@ resource "google_filestore_instance" "restored_fs_share" {
 
   networks {
     network      = "projects/${var.dr_project_id}/global/networks/dr-vpc"
-    modes        = ["ADDRESS_MODE_PRIVATE"]
+    modes        = ["MODE_IPV4"]
     connect_mode = "PRIVATE_SERVICE_ACCESS"
   }
   
