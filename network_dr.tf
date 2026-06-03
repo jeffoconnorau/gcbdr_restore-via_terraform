@@ -4,12 +4,12 @@
 # Created only if var.create_isolated_dr_vpc is true.
 
 resource "google_compute_network" "isolated_dr_vpc" {
-  provider                = google
-  project                 = var.dr_project_id
-  name                    = "isolated-dr-vpc"
-  auto_create_subnetworks = false
+  provider                        = google
+  project                         = var.dr_project_id
+  name                            = "isolated-dr-vpc"
+  auto_create_subnetworks         = false
   delete_default_routes_on_create = true # Ensure no access to 0.0.0.0/0
-  count                   = var.create_isolated_dr_vpc ? 1 : 0
+  count                           = var.create_isolated_dr_vpc ? 1 : 0
 }
 
 
@@ -23,16 +23,16 @@ resource "google_dns_policy" "dr_policy" {
   provider = google
   project  = var.dr_project_id
   name     = "dr-isolated-policy"
-  
+
   enable_inbound_forwarding = true
   enable_logging            = true
 
   networks {
     network_url = google_compute_network.isolated_dr_vpc[0].id
   }
-  
+
   count = var.create_isolated_dr_vpc ? 1 : 0
-  
+
   depends_on = [time_sleep.wait_for_apis]
 }
 
@@ -52,7 +52,7 @@ resource "google_dns_managed_zone" "dr_test_zone" {
   }
 
   count = var.create_isolated_dr_vpc ? 1 : 0
-  
+
   depends_on = [time_sleep.wait_for_apis]
 }
 
@@ -65,7 +65,7 @@ resource "google_dns_record_set" "dr_test_record" {
   type         = "A"
   ttl          = 300
   rrdatas      = ["1.1.1.1"] # Dummy IP to verify resolution works
-  
+
   count = var.create_isolated_dr_vpc ? 1 : 0
 }
 
@@ -131,7 +131,7 @@ resource "google_compute_global_address" "dr_private_ip_address" {
   name          = "dr-psa-range"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
-  prefix_length = 16 
+  prefix_length = 16
   address       = split("/", var.dr_psa_range_cidr)[0]
   network       = google_compute_network.isolated_dr_vpc[0].id
 }
@@ -143,6 +143,6 @@ resource "google_service_networking_connection" "dr_private_vpc_connection" {
   network                 = google_compute_network.isolated_dr_vpc[0].id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.dr_private_ip_address[0].name]
-  
+
   depends_on = [time_sleep.wait_for_apis]
 }

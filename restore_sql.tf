@@ -13,18 +13,18 @@ data "external" "latest_sql_backup" {
     project       = var.project_id
     location      = var.region
     instance_name = try(google_sql_database_instance.sql_pg[0].name, "sql-pg-unknown")
-    vault_id      = "bv-${var.region}-01"
+    vault_id      = google_backup_dr_backup_vault.vault.backup_vault_id
     vault_project = var.project_id
   }
 }
 
 resource "google_sql_database_instance" "restored_sql_pg" {
-  count            = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
-  provider         = google.dr
+  count    = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
+  provider = google.dr
   # Clean Naming: Use source name + suffix (e.g. sql-pg-dr)
   # Note: Cloud SQL names cannot be reused for ~1 week after deletion.
   # If collisions occur, consider adding a short random suffix.
-  name             = "restored-sql-pg${var.restore_suffix}" 
+  name             = "restored-sql-pg${var.restore_suffix}"
   region           = var.region # Same-Region Restore to avoid Cross-Region limitations
   database_version = "POSTGRES_15"
 
@@ -33,14 +33,14 @@ resource "google_sql_database_instance" "restored_sql_pg" {
 
   settings {
     tier              = "db-custom-2-3840" # Upgraded for faster restore (f1-micro is too slow for restores)
-    availability_type = "ZONAL"          # Disable HA for Cost Savings/Test
-    
+    availability_type = "ZONAL"            # Disable HA for Cost Savings/Test
+
     user_labels = {
       dr = "test"
     }
 
     ip_configuration {
-      ipv4_enabled    = false
+      ipv4_enabled = false
       # For Same-Region Restore, we use the Shared VPC (Host Project) where the Vault has access
       private_network = "projects/${var.host_project_id}/global/networks/${var.vpc_name}"
     }
@@ -67,15 +67,15 @@ data "external" "latest_mysql_backup" {
     project       = var.project_id
     location      = var.region
     instance_name = try(google_sql_database_instance.sql_mysql[0].name, "sql-mysql-unknown")
-    vault_id      = "bv-${var.region}-01"
+    vault_id      = google_backup_dr_backup_vault.vault.backup_vault_id
     vault_project = var.project_id
   }
 }
 
 resource "google_sql_database_instance" "restored_sql_mysql" {
-  count            = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
-  provider         = google.dr
-  
+  count    = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
+  provider = google.dr
+
   # Clean Naming: Use source name + suffix
   name             = "restored-sql-mysql${var.restore_suffix}"
   region           = var.region # Same-Region Restore
@@ -86,14 +86,14 @@ resource "google_sql_database_instance" "restored_sql_mysql" {
 
   settings {
     tier              = "db-custom-2-3840" # Upgraded for faster restore (f1-micro is too slow for restores)
-    availability_type = "ZONAL"          # Disable HA for Cost Savings/Test
+    availability_type = "ZONAL"            # Disable HA for Cost Savings/Test
 
     user_labels = {
       dr = "test"
     }
 
     ip_configuration {
-      ipv4_enabled    = false
+      ipv4_enabled = false
       # For Same-Region Restore, we use the Shared VPC (Host Project) where the Vault has access
       private_network = "projects/${var.host_project_id}/global/networks/${var.vpc_name}"
     }
@@ -103,6 +103,6 @@ resource "google_sql_database_instance" "restored_sql_mysql" {
 
   depends_on = [
     time_sleep.wait_for_apis,
-    google_service_networking_connection.dr_private_vpc_connection 
+    google_service_networking_connection.dr_private_vpc_connection
   ]
 }

@@ -6,14 +6,19 @@ This Terraform project provisions a test environment for Google Cloud Backup and
 
 The project follows standard Terraform modular practices:
 
-- **`main.tf`**: Core compute and database resources (VMs, Cloud SQL).
-- **`backup.tf`**: Backup infrastructure (Vaults, Plans, Associations).
-- **`restore.tf`**: Dedicated configuration for testing restore operations.
+- **`main.tf`**: Core compute, database, and storage resources (VMs, Cloud SQL, Filestore, AlloyDB).
+- **`backup.tf`**: Backup infrastructure (Vaults, Plans, Associations) for all workloads.
+- **`restore.tf`**: Dedicated configuration for testing Compute Engine VM restore operations.
+- **`restore_sql.tf`**: Native restore configurations for Cloud SQL.
+- **`restore_filestore.tf`**: Native restore configurations for Filestore.
+- **`restore_alloydb.tf`**: Native restore configurations for AlloyDB.
 - **`apis.tf`**: API enablement and dependency management.
 - **`kms_infra_prod.tf`**: CMEK Key infrastructure for the encrypted source project.
 - **`kms_gcbdr.tf`**: KMS configuration for the Backup Vault project.
 - **`network_dr.tf`**: Isolated VPC configuration for DR testing.
 - **`scripts/`**: Helper scripts for finding backup recovery points across projects.
+
+For comprehensive syntax examples and detailed instructions on how to build recovery plans via Terraform, see the [GCBDR Recovery Plans Guide](file:///Users/jeffoconnor/.gemini/jetski/brain/f6d3adaa-aed0-461f-b7cf-a8235ad06827/gcbdr_recovery_plans.md).
 
 ## Prerequisites
 

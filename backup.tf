@@ -11,19 +11,19 @@ resource "random_id" "vault_suffix" {
 }
 
 resource "google_backup_dr_backup_vault" "vault" {
-  provider                            = google
-  location                            = var.region
-  backup_vault_id                     = "bv-${var.region}-${random_id.vault_suffix.hex}"
+  provider                                   = google
+  location                                   = var.region
+  backup_vault_id                            = "bv-${var.region}-${random_id.vault_suffix.hex}"
   backup_minimum_enforced_retention_duration = "86400s" # 1 day
 
   depends_on = [time_sleep.wait_for_apis]
 }
 
 resource "google_backup_dr_backup_vault" "vault_cmek" {
-  provider                            = google.gcbdr
-  project                             = var.gcbdr_project_id
-  location                            = var.region
-  backup_vault_id                     = "bv-cmek-${var.region}-remote-${random_id.vault_suffix.hex}"
+  provider                                   = google.gcbdr
+  project                                    = var.gcbdr_project_id
+  location                                   = var.region
+  backup_vault_id                            = "bv-cmek-${var.region}-remote-${random_id.vault_suffix.hex}"
   backup_minimum_enforced_retention_duration = "86400s" # 1 day
 
   encryption_config {
@@ -37,13 +37,13 @@ resource "google_backup_dr_backup_vault" "vault_cmek" {
 
 # Wait for Remote Backup Vault
 resource "time_sleep" "wait_for_vault_cmek" {
-  depends_on = [google_backup_dr_backup_vault.vault_cmek]
+  depends_on      = [google_backup_dr_backup_vault.vault_cmek]
   create_duration = "120s"
 }
 
 # Wait for Standard Vault (Source Project)
 resource "time_sleep" "wait_for_vault" {
-  depends_on = [google_backup_dr_backup_vault.vault]
+  depends_on      = [google_backup_dr_backup_vault.vault]
   create_duration = "120s"
 }
 
@@ -62,11 +62,11 @@ resource "google_backup_dr_backup_plan" "bp_vms" {
   depends_on = [time_sleep.wait_for_vault]
 
   backup_rules {
-    rule_id              = "daily-backup"
+    rule_id               = "daily-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type   = "DAILY"
+      recurrence_type = "DAILY"
       backup_window {
         start_hour_of_day = 12
         end_hour_of_day   = 24
@@ -91,11 +91,11 @@ resource "google_backup_dr_backup_plan" "bp_rocky_cmek" {
   depends_on = [time_sleep.wait_for_vault_cmek]
 
   backup_rules {
-    rule_id              = "daily-backup"
+    rule_id               = "daily-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type   = "DAILY"
+      recurrence_type = "DAILY"
       backup_window {
         start_hour_of_day = 12
         end_hour_of_day   = 24
@@ -116,11 +116,11 @@ resource "google_backup_dr_backup_plan" "bp_rocky_disk_cmek" {
   depends_on = [time_sleep.wait_for_vault_cmek]
 
   backup_rules {
-    rule_id              = "daily-backup"
+    rule_id               = "daily-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type   = "DAILY"
+      recurrence_type = "DAILY"
       backup_window {
         start_hour_of_day = 12
         end_hour_of_day   = 24
@@ -146,11 +146,11 @@ resource "google_backup_dr_backup_plan" "bp_sql" {
   depends_on = [time_sleep.wait_for_vault]
 
   backup_rules {
-    rule_id              = "daily-backup"
+    rule_id               = "daily-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type   = "DAILY"
+      recurrence_type = "DAILY"
       backup_window {
         start_hour_of_day = 13
         end_hour_of_day   = 24
@@ -177,7 +177,11 @@ resource "time_sleep" "wait_for_resources" {
     google_compute_instance.vm_rocky,
     # SQL
     google_sql_database_instance.sql_pg,
-    google_sql_database_instance.sql_mysql
+    google_sql_database_instance.sql_mysql,
+    # Filestore
+    google_filestore_instance.fs_share,
+    # AlloyDB
+    google_alloydb_instance.alloydb_instance
   ]
 }
 
@@ -186,33 +190,33 @@ resource "time_sleep" "wait_for_resources" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan_association" "bpa_vm_debian" {
-  provider      = google
-  location      = var.region
-  resource_type = "compute.googleapis.com/Instance"
-  resource      = google_compute_instance.vm_debian.id
-  backup_plan   = google_backup_dr_backup_plan.bp_vms.id
+  provider                   = google
+  location                   = var.region
+  resource_type              = "compute.googleapis.com/Instance"
+  resource                   = google_compute_instance.vm_debian.id
+  backup_plan                = google_backup_dr_backup_plan.bp_vms.id
   backup_plan_association_id = "bpa-vm-debian"
 
   depends_on = [time_sleep.wait_for_resources]
 }
 
 resource "google_backup_dr_backup_plan_association" "bpa_vm_ubuntu" {
-  provider      = google
-  location      = var.region
-  resource_type = "compute.googleapis.com/Instance"
-  resource      = google_compute_instance.vm_ubuntu.id
-  backup_plan   = google_backup_dr_backup_plan.bp_vms.id
+  provider                   = google
+  location                   = var.region
+  resource_type              = "compute.googleapis.com/Instance"
+  resource                   = google_compute_instance.vm_ubuntu.id
+  backup_plan                = google_backup_dr_backup_plan.bp_vms.id
   backup_plan_association_id = "bpa-vm-ubuntu"
 
   depends_on = [time_sleep.wait_for_resources]
 }
 
 resource "google_backup_dr_backup_plan_association" "bpa_vm_rocky" {
-  provider      = google.infra_prod
-  location      = var.region
-  resource_type = "compute.googleapis.com/Instance"
-  resource      = google_compute_instance.vm_rocky.id
-  backup_plan   = google_backup_dr_backup_plan.bp_rocky_cmek.id
+  provider                   = google.infra_prod
+  location                   = var.region
+  resource_type              = "compute.googleapis.com/Instance"
+  resource                   = google_compute_instance.vm_rocky.id
+  backup_plan                = google_backup_dr_backup_plan.bp_rocky_cmek.id
   backup_plan_association_id = "bpa-vm-rocky-cmek"
 
   depends_on = [time_sleep.wait_for_vault_cmek]
@@ -223,8 +227,8 @@ resource "google_backup_dr_backup_plan_association" "bpa_disk_rocky" {
   location      = var.region
   resource_type = "compute.googleapis.com/Disk"
   resource      = google_compute_disk.rocky_data_disk.id
-    # Note: Disk Plan is separate
-  backup_plan   = google_backup_dr_backup_plan.bp_rocky_disk_cmek.id
+  # Note: Disk Plan is separate
+  backup_plan                = google_backup_dr_backup_plan.bp_rocky_disk_cmek.id
   backup_plan_association_id = "bpa-disk-rocky-cmek"
 
   depends_on = [
@@ -240,24 +244,24 @@ resource "google_backup_dr_backup_plan_association" "bpa_disk_rocky" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan_association" "bpa_sql_pg" {
-  count         = var.provision_cloud_sql ? 1 : 0
-  provider      = google
-  location      = var.region
-  resource_type = "sqladmin.googleapis.com/Instance"
-  resource      = "projects/${var.project_id}/instances/${google_sql_database_instance.sql_pg[0].name}"
-  backup_plan   = google_backup_dr_backup_plan.bp_sql[0].id
+  count                      = var.provision_cloud_sql ? 1 : 0
+  provider                   = google
+  location                   = var.region
+  resource_type              = "sqladmin.googleapis.com/Instance"
+  resource                   = "projects/${var.project_id}/instances/${google_sql_database_instance.sql_pg[0].name}"
+  backup_plan                = google_backup_dr_backup_plan.bp_sql[0].id
   backup_plan_association_id = "bpa-sql-pg"
 
   depends_on = [time_sleep.wait_for_resources]
 }
 
 resource "google_backup_dr_backup_plan_association" "bpa_sql_mysql" {
-  count         = var.provision_cloud_sql ? 1 : 0
-  provider      = google
-  location      = var.region
-  resource_type = "sqladmin.googleapis.com/Instance"
-  resource      = "projects/${var.project_id}/instances/${google_sql_database_instance.sql_mysql[0].name}"
-  backup_plan   = google_backup_dr_backup_plan.bp_sql[0].id
+  count                      = var.provision_cloud_sql ? 1 : 0
+  provider                   = google
+  location                   = var.region
+  resource_type              = "sqladmin.googleapis.com/Instance"
+  resource                   = "projects/${var.project_id}/instances/${google_sql_database_instance.sql_mysql[0].name}"
+  backup_plan                = google_backup_dr_backup_plan.bp_sql[0].id
   backup_plan_association_id = "bpa-sql-mysql"
 
   depends_on = [time_sleep.wait_for_resources]
@@ -277,11 +281,11 @@ resource "google_backup_dr_backup_plan" "bp_disk" {
   depends_on = [time_sleep.wait_for_vault]
 
   backup_rules {
-    rule_id              = "daily-backup"
+    rule_id               = "daily-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type   = "DAILY"
+      recurrence_type = "DAILY"
       backup_window {
         start_hour_of_day = 12
         end_hour_of_day   = 24
@@ -296,15 +300,105 @@ resource "google_backup_dr_backup_plan" "bp_disk" {
 # ------------------------------------------------------------------------------
 
 resource "google_backup_dr_backup_plan_association" "bpa_disk_debian" {
-  provider      = google
-  location      = var.region
-  resource_type = "compute.googleapis.com/Disk"
-  resource      = google_compute_disk.debian_data_disk.id
-  backup_plan   = google_backup_dr_backup_plan.bp_disk.id
+  provider                   = google
+  location                   = var.region
+  resource_type              = "compute.googleapis.com/Disk"
+  resource                   = google_compute_disk.debian_data_disk.id
+  backup_plan                = google_backup_dr_backup_plan.bp_disk.id
   backup_plan_association_id = "bpa-disk-debian"
 
   depends_on = [
     time_sleep.wait_for_resources,
     google_compute_attached_disk.attach_min_debian
   ]
+}
+
+# ------------------------------------------------------------------------------
+# Backup Plan for Filestore
+# ------------------------------------------------------------------------------
+
+resource "google_backup_dr_backup_plan" "bp_filestore" {
+  count          = var.provision_filestore ? 1 : 0
+  provider       = google
+  location       = var.region
+  backup_plan_id = "bp-filestore-daily-3d-retention"
+  resource_type  = "file.googleapis.com/Instance"
+  backup_vault   = google_backup_dr_backup_vault.vault.id
+
+  depends_on = [time_sleep.wait_for_vault]
+
+  backup_rules {
+    rule_id               = "daily-backup"
+    backup_retention_days = 3
+
+    standard_schedule {
+      recurrence_type = "DAILY"
+      backup_window {
+        start_hour_of_day = 12
+        end_hour_of_day   = 24
+      }
+      time_zone = "UTC"
+    }
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Backup Plan Associations (Filestore)
+# ------------------------------------------------------------------------------
+
+resource "google_backup_dr_backup_plan_association" "bpa_filestore" {
+  count                      = var.provision_filestore ? 1 : 0
+  provider                   = google
+  location                   = var.region
+  resource_type              = "file.googleapis.com/Instance"
+  resource                   = google_filestore_instance.fs_share[0].id
+  backup_plan                = google_backup_dr_backup_plan.bp_filestore[0].id
+  backup_plan_association_id = "bpa-filestore"
+
+  depends_on = [time_sleep.wait_for_resources]
+}
+
+# ------------------------------------------------------------------------------
+# Backup Plan for AlloyDB
+# ------------------------------------------------------------------------------
+
+resource "google_backup_dr_backup_plan" "bp_alloydb" {
+  count          = var.provision_alloydb ? 1 : 0
+  provider       = google
+  location       = var.region
+  backup_plan_id = "bp-alloydb-daily-3d-retention"
+  resource_type  = "alloydb.googleapis.com/Cluster"
+  backup_vault   = google_backup_dr_backup_vault.vault.id
+
+  depends_on = [time_sleep.wait_for_vault]
+
+  backup_rules {
+    rule_id               = "daily-backup"
+    backup_retention_days = 3
+
+    standard_schedule {
+      recurrence_type = "DAILY"
+      backup_window {
+        start_hour_of_day = 12
+        end_hour_of_day   = 24
+      }
+      time_zone = "UTC"
+    }
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Backup Plan Associations (AlloyDB)
+# ------------------------------------------------------------------------------
+
+resource "google_backup_dr_backup_plan_association" "bpa_alloydb" {
+  count                      = var.provision_alloydb ? 1 : 0
+  provider                   = google
+  location                   = var.region
+  resource_type              = "alloydb.googleapis.com/Cluster"
+  resource                   = google_alloydb_cluster.alloydb_cluster[0].id
+  backup_plan                = google_backup_dr_backup_plan.bp_alloydb[0].id
+  backup_plan_association_id = "bpa-alloydb"
+
+  depends_on = [time_sleep.wait_for_resources]
 }

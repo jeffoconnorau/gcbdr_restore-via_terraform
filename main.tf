@@ -30,10 +30,10 @@ resource "google_compute_instance" "vm_debian" {
 }
 
 resource "google_compute_disk" "debian_data_disk" {
-  name  = "vm-debian-data-disk"
-  type  = var.disk_type
-  zone  = "${var.region}-a"
-  size  = 10
+  name = "vm-debian-data-disk"
+  type = var.disk_type
+  zone = "${var.region}-a"
+  size = 10
 
   depends_on = [time_sleep.wait_for_apis]
 }
@@ -66,10 +66,10 @@ resource "google_compute_instance" "vm_ubuntu" {
 }
 
 resource "google_compute_disk" "ubuntu_data_disk" {
-  name  = "vm-ubuntu-data-disk"
-  type  = var.disk_type
-  zone  = "${var.region}-b"
-  size  = 10
+  name = "vm-ubuntu-data-disk"
+  type = var.disk_type
+  zone = "${var.region}-b"
+  size = 10
 
   depends_on = [time_sleep.wait_for_apis]
 }
@@ -116,7 +116,7 @@ resource "google_compute_disk" "rocky_data_disk" {
   type     = var.disk_type
   zone     = "${var.region}-c"
   size     = 10
-  
+
   disk_encryption_key {
     kms_key_self_link = google_kms_crypto_key.compute_key_infra.id
   }
@@ -175,5 +175,72 @@ resource "google_sql_database_instance" "sql_mysql" {
 
 resource "random_id" "db_suffix" {
   byte_length = 4
-  depends_on = [time_sleep.wait_for_apis]
+  depends_on  = [time_sleep.wait_for_apis]
+}
+
+# ------------------------------------------------------------------------------
+# Filestore Instance (Zonal Tier required for GCBDR)
+# ------------------------------------------------------------------------------
+
+resource "google_filestore_instance" "fs_share" {
+  count    = var.provision_filestore ? 1 : 0
+  name     = "fs-share-${random_id.db_suffix.hex}"
+  location = "${var.region}-a"
+  tier     = "ZONAL"
+
+  file_shares {
+    capacity_gb = 1024 # 1 TiB is the minimum size for Zonal tier
+    name        = "vol1"
+  }
+
+  networks {
+    network      = data.google_compute_network.shared_vpc.name
+    modes        = ["ADDRESS_MODE_PRIVATE"]
+    connect_mode = "PRIVATE_SERVICE_ACCESS"
+  }
+
+  depends_on = [
+    time_sleep.wait_for_apis,
+    google_service_networking_connection.private_vpc_connection
+  ]
+}
+
+# ------------------------------------------------------------------------------
+# AlloyDB Cluster & Primary Instance
+# ------------------------------------------------------------------------------
+
+resource "google_alloydb_cluster" "alloydb_cluster" {
+  count      = var.provision_alloydb ? 1 : 0
+  cluster_id = "alloydb-cluster-${random_id.db_suffix.hex}"
+  location   = var.region
+
+  network_config {
+    network = data.google_compute_network.shared_vpc.id
+  }
+
+  # For testing/lab environment, disable deletion protection
+  deletion_protection = false
+
+  depends_on = [
+    time_sleep.wait_for_apis,
+    google_service_networking_connection.private_vpc_connection
+  ]
+}
+
+resource "google_alloydb_instance" "alloydb_instance" {
+  count         = var.provision_alloydb ? 1 : 0
+  cluster_id    = google_alloydb_cluster.alloydb_cluster[0].id
+  instance_id   = "alloydb-primary-${random_id.db_suffix.hex}"
+  instance_type = "PRIMARY"
+
+  machine_config {
+    cpu_count = 2 # Minimum for AlloyDB primary instance
+  }
+
+  # For testing/lab environment, disable deletion protection
+  availability_type = "ZONAL"
+
+  depends_on = [
+    time_sleep.wait_for_apis
+  ]
 }

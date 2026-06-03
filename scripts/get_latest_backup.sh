@@ -60,6 +60,9 @@ DATASOURCE_ID=$(echo "$ALL_DATASOURCES_JSON" | jq -r --arg NAME "$INSTANCE_NAME"
     (.dataSourceGcpResource.computeInstanceDatasourceProperties.name // "" | endswith("/" + $NAME)) or
     (.dataSourceGcpResource.cloudSqlInstanceDatasourceProperties.name // "" | endswith("/" + $NAME)) or
     (.dataSourceGcpResource.computeDiskDatasourceProperties.name // "" | endswith("/" + $NAME)) or
+    (.dataSourceGcpResource.gcpResourcename // "" | endswith("/" + $NAME)) or
+    (.dataSourceGcpResource.gcpResourcename // "" | endswith("/instances/" + $NAME)) or
+    (.dataSourceGcpResource.gcpResourcename // "" | endswith("/clusters/" + $NAME)) or
     ($DISK_ID != "" and (.dataSourceGcpResource.gcpResourcename // "" | endswith("/disks/" + $DISK_ID))) or
     (.name | contains($NAME))
   ) | .name' | head -n 1)

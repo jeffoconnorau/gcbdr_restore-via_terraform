@@ -52,7 +52,7 @@ resource "google_kms_crypto_key_iam_member" "compute_sa_encrypter" {
   crypto_key_id = google_kms_crypto_key.compute_key.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   # Construct email manually to avoid 'null' error during plan if resource is creating
-  member        = "serviceAccount:service-${data.google_project.project.number}@compute-system.iam.gserviceaccount.com"
+  member = "serviceAccount:service-${data.google_project.project.number}@compute-system.iam.gserviceaccount.com"
 }
 
 # Fetch/Create Backup DR Service Agent (System Managed)

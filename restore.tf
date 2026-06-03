@@ -41,13 +41,13 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
 
   provider = google-beta
   location = var.region # The location of the Backup Vault (Source Region)
-  
+
   # Resource arguments (derived from external data source)
   backup_vault_id = each.value.result.backup_vault_id
   data_source_id  = each.value.result.data_source_id
   backup_id       = each.value.result.backup_id
-  
-  name = "restore-${each.key}-job-${random_id.restore_suffix.hex}" 
+
+  name = "restore-${each.key}-job-${random_id.restore_suffix.hex}"
 
   compute_instance_target_environment {
     project = var.dr_project_id
@@ -57,10 +57,10 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
   compute_instance_restore_properties {
     # Use original name plus optional suffix
     name = "${each.key}${var.restore_suffix}"
-    
+
     # Target Machine Type (Requires full URL)
     machine_type = "projects/${var.dr_project_id}/zones/${var.dr_region}-a/machineTypes/e2-micro"
-    
+
     labels {
       key   = "dr"
       value = "test"
@@ -88,7 +88,7 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
     google_project_iam_member.vault_sa_host_network_permissions,
     time_sleep.wait_for_policy
   ]
-  
+
   lifecycle {
     ignore_changes = [name] # Ignore name changes if we use random suffix
   }
@@ -185,11 +185,11 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
 
   provider = google-beta
   location = var.region
-  
+
   backup_vault_id = data.external.latest_disk_backup[0].result.backup_vault_id
   data_source_id  = data.external.latest_disk_backup[0].result.data_source_id
   backup_id       = data.external.latest_disk_backup[0].result.backup_id
-  
+
   name = "restore-disk-${random_id.restore_suffix.hex}"
 
   disk_target_environment {
@@ -202,9 +202,9 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
     size_gb = 10
     type    = "projects/${var.dr_project_id}/zones/${var.dr_region}-a/diskTypes/${var.disk_type}"
   }
-  
+
   lifecycle {
-    ignore_changes = [name] 
+    ignore_changes = [name]
   }
 }
 
@@ -215,10 +215,10 @@ resource "google_compute_attached_disk" "attach_restored_disk" {
 
   disk     = google_backup_dr_restore_workload.restore_disk[0].target_resource[0].gcp_resource[0].gcp_resourcename
   instance = google_backup_dr_restore_workload.restore_vms["vm-debian"].target_resource[0].gcp_resource[0].gcp_resourcename
-  
+
   # Ensure attachment happens in the DR project/zone
-  project  = var.dr_project_id
-  zone     = "${var.dr_region}-a"
+  project = var.dr_project_id
+  zone    = "${var.dr_region}-a"
 
   depends_on = [
     google_backup_dr_restore_workload.restore_vms,
@@ -260,12 +260,12 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
 
   provider = google-beta.gcbdr
   location = var.region
-  
+
   backup_vault_id = data.external.latest_backup_rocky[0].result.backup_vault_id
   data_source_id  = data.external.latest_backup_rocky[0].result.data_source_id
   backup_id       = data.external.latest_backup_rocky[0].result.backup_id
-  
-  name = "restore-vm-rocky-job-${random_id.restore_suffix.hex}" 
+
+  name = "restore-vm-rocky-job-${random_id.restore_suffix.hex}"
 
   compute_instance_target_environment {
     project = var.infra_prod_project_id
@@ -274,10 +274,10 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
 
   compute_instance_restore_properties {
     name = "vm-rocky${var.restore_suffix}"
-    
+
     # Target Machine Type (Source Region)
     machine_type = "projects/${var.infra_prod_project_id}/zones/${var.region}-c/machineTypes/e2-micro"
-    
+
     labels {
       key   = "dr"
       value = "test"
@@ -304,7 +304,7 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
     google_project_iam_member.vault_sa_infra_prod_permissions,
     time_sleep.wait_for_policy
   ]
-  
+
   lifecycle {
     ignore_changes = [name]
   }
@@ -344,17 +344,17 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
 
   disk_target_environment {
     project = var.infra_prod_project_id # Target Infra Prod
-    zone    = "${var.region}-c" # Source Region
+    zone    = "${var.region}-c"         # Source Region
   }
 
   disk_restore_properties {
     name    = "vm-rocky-data-disk${var.restore_suffix}"
     size_gb = 10
     type    = "projects/${var.infra_prod_project_id}/zones/${var.region}-c/diskTypes/${var.disk_type}"
-    
+
     # Enforce CMEK using Source Key (In-Place Restore)
     disk_encryption_key {
-       kms_key_name = google_kms_crypto_key.compute_key_infra.id
+      kms_key_name = google_kms_crypto_key.compute_key_infra.id
     }
   }
 
@@ -362,7 +362,7 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
     time_sleep.wait_for_kms_iam_infra # Ensure IAM is ready
   ]
 
-   lifecycle {
+  lifecycle {
     ignore_changes = [name]
   }
 }
@@ -370,15 +370,15 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
 # 9. Attach Restored Rocky Disk to Restored VM
 resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
   count = var.perform_dr_test ? 1 : 0
-  
-  provider = google.infra_prod 
+
+  provider = google.infra_prod
 
   disk     = google_backup_dr_restore_workload.restore_rocky_disk[0].target_resource[0].gcp_resource[0].gcp_resourcename
   instance = google_backup_dr_restore_workload.restore_vm_rocky[0].target_resource[0].gcp_resource[0].gcp_resourcename
 
   # Ensure attachment happens in the Target project/zone
-  project  = var.infra_prod_project_id
-  zone     = "${var.region}-c"
+  project = var.infra_prod_project_id
+  zone    = "${var.region}-c"
 
   depends_on = [
     google_backup_dr_restore_workload.restore_vm_rocky,
@@ -389,7 +389,7 @@ resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
 # Workaround: Force-apply labels using gcloud since provider propagation is unreliable
 resource "null_resource" "tag_restored_vm" {
   count = var.perform_dr_test ? 1 : 0
-  
+
   triggers = {
     # Force run on every apply to ensure labels are patched
     always_run = timestamp()

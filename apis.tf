@@ -3,30 +3,30 @@
 # ------------------------------------------------------------------------------
 
 resource "google_project_service" "backupdr" {
-  provider = google
-  project  = var.project_id
-  service  = "backupdr.googleapis.com"
+  provider           = google
+  project            = var.project_id
+  service            = "backupdr.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "compute" {
-  provider = google
-  project  = var.project_id
-  service  = "compute.googleapis.com"
+  provider           = google
+  project            = var.project_id
+  service            = "compute.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "servicenetworking" {
-  provider = google
-  project  = var.project_id
-  service  = "servicenetworking.googleapis.com"
+  provider           = google
+  project            = var.project_id
+  service            = "servicenetworking.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "sqladmin" {
-  provider = google
-  project  = var.project_id
-  service  = "sqladmin.googleapis.com"
+  provider           = google
+  project            = var.project_id
+  service            = "sqladmin.googleapis.com"
   disable_on_destroy = false
 }
 
@@ -65,6 +65,34 @@ resource "google_project_service" "dr_servicenetworking" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "filestore" {
+  provider           = google
+  project            = var.project_id
+  service            = "file.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "dr_filestore" {
+  provider           = google
+  project            = var.dr_project_id
+  service            = "file.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "alloydb" {
+  provider           = google
+  project            = var.project_id
+  service            = "alloydb.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "dr_alloydb" {
+  provider           = google
+  project            = var.dr_project_id
+  service            = "alloydb.googleapis.com"
+  disable_on_destroy = false
+}
+
 # ------------------------------------------------------------------------------
 # Wait for APIs to be enabled
 # ------------------------------------------------------------------------------
@@ -81,7 +109,11 @@ resource "time_sleep" "wait_for_apis" {
     google_project_service.dr_dns,
     google_project_service.kms,
     google_project_service.dr_kms,
-    google_project_service.dr_servicenetworking
+    google_project_service.dr_servicenetworking,
+    google_project_service.filestore,
+    google_project_service.dr_filestore,
+    google_project_service.alloydb,
+    google_project_service.dr_alloydb
   ]
 
   triggers = {
@@ -93,6 +125,8 @@ resource "time_sleep" "wait_for_apis" {
     dr_dns_id            = google_project_service.dr_dns.id
     kms_id               = google_project_service.kms.id
     dr_kms_id            = google_project_service.dr_kms.id
+    filestore_id         = google_project_service.filestore.id
+    alloydb_id           = google_project_service.alloydb.id
   }
 }
 
@@ -104,7 +138,7 @@ resource "google_project_organization_policy" "storage_policy_source" {
   provider   = google
   project    = var.project_id
   constraint = "constraints/compute.storageResourceUseRestrictions"
-  
+
   list_policy {
     allow {
       all = true

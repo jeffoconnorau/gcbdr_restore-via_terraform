@@ -84,7 +84,7 @@ resource "google_kms_crypto_key_iam_member" "compute_sa_encrypter_infra" {
   crypto_key_id = google_kms_crypto_key.compute_key_infra.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   # Construct email manually to avoid 'null' error during plan/apply
-  member        = "serviceAccount:service-${data.google_project.infra_prod_project.number}@compute-system.iam.gserviceaccount.com"
+  member = "serviceAccount:service-${data.google_project.infra_prod_project.number}@compute-system.iam.gserviceaccount.com"
 }
 
 # Grant Encrypter/Decrypter to the GCBDR Service Agent (Remote) so it can BACKUP this CMEK disk
@@ -122,7 +122,7 @@ resource "google_kms_crypto_key_iam_member" "compute_sa_encrypter_infra_dr" {
   crypto_key_id = google_kms_crypto_key.compute_key_infra_dr.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   # Use same Compute SA
-  member        = "serviceAccount:service-${data.google_project.infra_prod_project.number}@compute-system.iam.gserviceaccount.com"
+  member = "serviceAccount:service-${data.google_project.infra_prod_project.number}@compute-system.iam.gserviceaccount.com"
 }
 
 # Grant Encrypter/Decrypter to the GCBDR Service Agent (Remote) for DR Key

@@ -135,3 +135,15 @@ variable "dr_psa_range_cidr" {
   type        = string
   default     = "10.240.0.0/16"
 }
+
+variable "provision_filestore" {
+  description = "Whether to provision Filestore instances and their backup plans."
+  type        = bool
+  default     = false
+}
+
+variable "provision_alloydb" {
+  description = "Whether to provision AlloyDB clusters and their backup plans."
+  type        = bool
+  default     = false
+}
