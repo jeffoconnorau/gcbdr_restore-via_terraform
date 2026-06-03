@@ -4,6 +4,13 @@
 # Uses the native google_alloydb_cluster resource with the
 # restore_backupdr_backup_source block to trigger a restore.
 
+data "google_client_openid_userinfo" "caller" {}
+
+locals {
+  caller_is_sa = endswith(data.google_client_openid_userinfo.caller.email, ".gserviceaccount.com")
+  caller_member = "${local.caller_is_sa ? "serviceAccount" : "user"}:${data.google_client_openid_userinfo.caller.email}"
+}
+
 data "external" "latest_alloydb_backup" {
   count = var.perform_dr_test && var.provision_alloydb ? 1 : 0
 
@@ -65,6 +72,17 @@ resource "google_project_iam_member" "dr_backupdr_sa_source_backupdr_permissions
   depends_on = [time_sleep.wait_for_apis]
 }
 
+# Grant the caller permissions in the source project to access the GCBDR backup vault
+resource "google_project_iam_member" "caller_source_backupdr_permissions" {
+  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  provider = google
+  project  = var.project_id
+  role     = "roles/backupdr.restoreUser"
+  member   = local.caller_member
+
+  depends_on = [time_sleep.wait_for_apis]
+}
+
 # Restore the AlloyDB Cluster from GCBDR
 resource "google_alloydb_cluster" "restored_alloydb_cluster" {
   count    = (var.perform_dr_test && var.provision_alloydb && try(one(data.external.latest_alloydb_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
@@ -91,6 +109,7 @@ resource "google_alloydb_cluster" "restored_alloydb_cluster" {
     google_project_iam_member.vault_sa_dr_sa_user,
     google_project_iam_member.dr_alloydb_sa_source_backupdr_permissions,
     google_project_iam_member.dr_backupdr_sa_source_backupdr_permissions,
+    google_project_iam_member.caller_source_backupdr_permissions,
     google_service_networking_connection.dr_private_vpc_connection
   ]
 }
