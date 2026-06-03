@@ -37,7 +37,7 @@ resource "google_project_iam_member" "vault_sa_target_permissions" {
 
 # 3. Execute Restore using Native Beta Resource for EACH VM (Standard)
 resource "google_backup_dr_restore_workload" "restore_vms" {
-  for_each = data.external.latest_backup
+  for_each = { for k, v in data.external.latest_backup : k => v if v.result.backup_id != "dummy" }
 
   provider = google-beta
   location = var.region # The location of the Backup Vault (Source Region)
@@ -135,7 +135,7 @@ resource "random_id" "restore_suffix" {
 # The native resource's `labels` block might not propagate correctly in Beta.
 # ------------------------------------------------------------------------------
 resource "null_resource" "apply_labels" {
-  for_each = var.perform_dr_test ? local.vms_to_restore : {}
+  for_each = { for k, v in data.external.latest_backup : k => v if var.perform_dr_test && v.result.backup_id != "dummy" }
 
   triggers = {
     # Force run on every apply to ensure labels are patched, as Provider often drops them
@@ -178,7 +178,7 @@ data "external" "latest_disk_backup" {
 # We need to check if it supports Disk restore (compute.googleapis.com/Disk).
 # Based on API docs, it does.
 resource "google_backup_dr_restore_workload" "restore_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = (var.perform_dr_test && try(one(data.external.latest_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   provider = google-beta
   location = var.region
@@ -205,7 +205,7 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
 # 6. Attach Restored Disk to Restored VM
 # We only do this for vm-debian as that's where the data disk belongs
 resource "google_compute_attached_disk" "attach_restored_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = (var.perform_dr_test && try(one(data.external.latest_disk_backup).result.backup_id, "dummy") != "dummy" && contains(keys(google_backup_dr_restore_workload.restore_vms), "vm-debian")) ? 1 : 0
 
   disk     = google_backup_dr_restore_workload.restore_disk[0].target_resource[0].gcp_resource[0].gcp_resourcename
   instance = google_backup_dr_restore_workload.restore_vms["vm-debian"].target_resource[0].gcp_resource[0].gcp_resourcename
@@ -250,7 +250,7 @@ data "external" "latest_backup_rocky" {
 
 # Restore Rocky VM to Infra Prod
 resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
-  count = var.perform_dr_test ? 1 : 0
+  count = (var.perform_dr_test && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   provider = google-beta.gcbdr
   location = var.region
@@ -322,7 +322,7 @@ data "external" "latest_rocky_disk_backup" {
 
 # 8. Restore Rocky Disk
 resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = (var.perform_dr_test && try(one(data.external.latest_rocky_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   provider = google-beta.gcbdr
   location = var.region
@@ -357,7 +357,7 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
 
 # 9. Attach Restored Rocky Disk to Restored VM
 resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = (var.perform_dr_test && try(one(data.external.latest_rocky_disk_backup).result.backup_id, "dummy") != "dummy" && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   provider = google.infra_prod
 
@@ -376,7 +376,7 @@ resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
 
 # Workaround: Force-apply labels using gcloud since provider propagation is unreliable
 resource "null_resource" "tag_restored_vm" {
-  count = var.perform_dr_test ? 1 : 0
+  count = (var.perform_dr_test && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   triggers = {
     # Force run on every apply to ensure labels are patched
@@ -403,7 +403,7 @@ resource "null_resource" "tag_restored_vm" {
 # This blocks terraform from destroying the subnetwork. These hooks force-delete them.
 
 resource "null_resource" "cleanup_restored_vms" {
-  for_each = var.perform_dr_test ? local.vms_to_restore : {}
+  for_each = { for k, v in data.external.latest_backup : k => v if var.perform_dr_test && v.result.backup_id != "dummy" }
 
   triggers = {
     project = var.dr_project_id
@@ -420,7 +420,7 @@ resource "null_resource" "cleanup_restored_vms" {
 }
 
 resource "null_resource" "cleanup_restored_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = (var.perform_dr_test && try(one(data.external.latest_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   triggers = {
     project   = var.dr_project_id
@@ -437,7 +437,7 @@ resource "null_resource" "cleanup_restored_disk" {
 }
 
 resource "null_resource" "cleanup_restored_rocky_vm" {
-  count = var.perform_dr_test ? 1 : 0
+  count = (var.perform_dr_test && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   triggers = {
     project = var.infra_prod_project_id
@@ -454,7 +454,7 @@ resource "null_resource" "cleanup_restored_rocky_vm" {
 }
 
 resource "null_resource" "cleanup_restored_rocky_disk" {
-  count = var.perform_dr_test ? 1 : 0
+  count = (var.perform_dr_test && try(one(data.external.latest_rocky_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   triggers = {
     project   = var.infra_prod_project_id

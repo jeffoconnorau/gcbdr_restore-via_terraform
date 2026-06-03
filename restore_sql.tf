@@ -19,7 +19,7 @@ data "external" "latest_sql_backup" {
 }
 
 resource "google_sql_database_instance" "restored_sql_pg" {
-  count    = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
+  count    = (var.perform_dr_test && var.provision_cloud_sql && try(one(data.external.latest_sql_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
   provider = google.dr
   # Clean Naming: Use source name + suffix (e.g. sql-pg-dr)
   # Note: Cloud SQL names cannot be reused for ~1 week after deletion.
@@ -73,7 +73,7 @@ data "external" "latest_mysql_backup" {
 }
 
 resource "google_sql_database_instance" "restored_sql_mysql" {
-  count    = var.perform_dr_test && var.provision_cloud_sql ? 1 : 0
+  count    = (var.perform_dr_test && var.provision_cloud_sql && try(one(data.external.latest_mysql_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
   provider = google.dr
 
   # Clean Naming: Use source name + suffix

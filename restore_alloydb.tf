@@ -52,9 +52,18 @@ resource "google_project_iam_member" "dr_alloydb_sa_source_backupdr_permissions"
   member   = "serviceAccount:service-${data.google_project.dr_project.number}@gcp-sa-alloydb.iam.gserviceaccount.com"
 }
 
+# Grant DR Backup DR Service Agent permission to read backups from GCBDR Vault in Source Project
+resource "google_project_iam_member" "dr_backupdr_sa_source_backupdr_permissions" {
+  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  provider = google
+  project  = var.project_id
+  role     = "roles/backupdr.restoreUser"
+  member   = "serviceAccount:service-${data.google_project.dr_project.number}@gcp-sa-backupdr.iam.gserviceaccount.com"
+}
+
 # Restore the AlloyDB Cluster from GCBDR
 resource "google_alloydb_cluster" "restored_alloydb_cluster" {
-  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  count    = (var.perform_dr_test && var.provision_alloydb && try(one(data.external.latest_alloydb_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
   provider = google-beta.dr
 
   cluster_id = "restored-alloydb-cluster${var.restore_suffix}"
@@ -74,13 +83,17 @@ resource "google_alloydb_cluster" "restored_alloydb_cluster" {
   depends_on = [
     time_sleep.wait_for_apis,
     google_project_iam_member.vault_sa_dr_alloydb_permissions,
+    google_project_iam_member.vault_sa_dr_alloydb_operator,
+    google_project_iam_member.vault_sa_dr_sa_user,
+    google_project_iam_member.dr_alloydb_sa_source_backupdr_permissions,
+    google_project_iam_member.dr_backupdr_sa_source_backupdr_permissions,
     google_service_networking_connection.dr_private_vpc_connection
   ]
 }
 
 # Provision a Primary Instance in the restored cluster so it is queryable
 resource "google_alloydb_instance" "restored_alloydb_instance" {
-  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  count    = (var.perform_dr_test && var.provision_alloydb && try(one(data.external.latest_alloydb_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
   provider = google-beta.dr
 
   cluster       = google_alloydb_cluster.restored_alloydb_cluster[0].id
