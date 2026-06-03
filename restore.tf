@@ -47,7 +47,6 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
   data_source_id  = each.value.result.data_source_id
   backup_id       = each.value.result.backup_id
 
-  name = "restore-${each.key}-job-${random_id.restore_suffix.hex}"
 
   compute_instance_target_environment {
     project = var.dr_project_id
@@ -89,9 +88,7 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
     time_sleep.wait_for_policy
   ]
 
-  lifecycle {
-    ignore_changes = [name] # Ignore name changes if we use random suffix
-  }
+
 }
 
 # Grant Vault SA permission to use Shared VPC Subnets in Host Project
@@ -190,7 +187,6 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
   data_source_id  = data.external.latest_disk_backup[0].result.data_source_id
   backup_id       = data.external.latest_disk_backup[0].result.backup_id
 
-  name = "restore-disk-${random_id.restore_suffix.hex}"
 
   disk_target_environment {
     project = var.dr_project_id
@@ -203,9 +199,7 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
     type    = "projects/${var.dr_project_id}/zones/${var.dr_region}-a/diskTypes/${var.disk_type}"
   }
 
-  lifecycle {
-    ignore_changes = [name]
-  }
+
 }
 
 # 6. Attach Restored Disk to Restored VM
@@ -265,7 +259,6 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
   data_source_id  = data.external.latest_backup_rocky[0].result.data_source_id
   backup_id       = data.external.latest_backup_rocky[0].result.backup_id
 
-  name = "restore-vm-rocky-job-${random_id.restore_suffix.hex}"
 
   compute_instance_target_environment {
     project = var.infra_prod_project_id
@@ -305,9 +298,7 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
     time_sleep.wait_for_policy
   ]
 
-  lifecycle {
-    ignore_changes = [name]
-  }
+
 }
 
 # ------------------------------------------------------------------------------
@@ -340,7 +331,6 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
   data_source_id  = data.external.latest_rocky_disk_backup[0].result.data_source_id
   backup_id       = data.external.latest_rocky_disk_backup[0].result.backup_id
 
-  name = "restore-rocky-disk-${random_id.restore_suffix.hex}"
 
   disk_target_environment {
     project = var.infra_prod_project_id # Target Infra Prod
@@ -362,9 +352,7 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
     time_sleep.wait_for_kms_iam_infra # Ensure IAM is ready
   ]
 
-  lifecycle {
-    ignore_changes = [name]
-  }
+
 }
 
 # 9. Attach Restored Rocky Disk to Restored VM
