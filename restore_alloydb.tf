@@ -29,8 +29,8 @@ resource "google_project_iam_member" "vault_sa_dr_alloydb_permissions" {
 
 # Restore the AlloyDB Cluster from GCBDR
 resource "google_alloydb_cluster" "restored_alloydb_cluster" {
-  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
-  provider = google.dr
+  count      = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  provider   = google-beta.dr
 
   cluster_id = "restored-alloydb-cluster${var.restore_suffix}"
   location   = var.dr_region
@@ -55,10 +55,10 @@ resource "google_alloydb_cluster" "restored_alloydb_cluster" {
 
 # Provision a Primary Instance in the restored cluster so it is queryable
 resource "google_alloydb_instance" "restored_alloydb_instance" {
-  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
-  provider = google.dr
+  count         = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+  provider      = google-beta.dr
 
-  cluster_id    = google_alloydb_cluster.restored_alloydb_cluster[0].id
+  cluster       = google_alloydb_cluster.restored_alloydb_cluster[0].id
   instance_id   = "restored-alloydb-primary${var.restore_suffix}"
   instance_type = "PRIMARY"
 

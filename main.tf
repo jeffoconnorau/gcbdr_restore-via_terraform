@@ -229,7 +229,7 @@ resource "google_alloydb_cluster" "alloydb_cluster" {
 
 resource "google_alloydb_instance" "alloydb_instance" {
   count         = var.provision_alloydb ? 1 : 0
-  cluster_id    = google_alloydb_cluster.alloydb_cluster[0].id
+  cluster       = google_alloydb_cluster.alloydb_cluster[0].id
   instance_id   = "alloydb-primary-${random_id.db_suffix.hex}"
   instance_type = "PRIMARY"
 

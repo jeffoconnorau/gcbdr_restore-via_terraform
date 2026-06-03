@@ -29,7 +29,7 @@ resource "google_project_iam_member" "vault_sa_dr_filestore_permissions" {
 
 resource "google_filestore_instance" "restored_fs_share" {
   count    = var.perform_dr_test && var.provision_filestore ? 1 : 0
-  provider = google.dr
+  provider = google-beta.dr
 
   name     = "restored-fs-share${var.restore_suffix}"
   location = "${var.dr_region}-a"
