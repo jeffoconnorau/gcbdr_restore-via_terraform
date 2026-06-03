@@ -18,7 +18,7 @@ The project follows standard Terraform modular practices:
 - **`network_dr.tf`**: Isolated VPC configuration for DR testing.
 - **`scripts/`**: Helper scripts for finding backup recovery points across projects.
 
-For comprehensive syntax examples and detailed instructions on how to build recovery plans via Terraform, see the [GCBDR Recovery Plans Guide](file:///Users/jeffoconnor/.gemini/jetski/brain/f6d3adaa-aed0-461f-b7cf-a8235ad06827/gcbdr_recovery_plans.md).
+For comprehensive syntax examples and detailed instructions on how to build recovery plans via Terraform, see the [GCBDR Recovery Plans Guide](gcbdr_recovery_plans.md).
 
 ## Prerequisites
 
