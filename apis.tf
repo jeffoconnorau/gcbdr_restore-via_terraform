@@ -9,6 +9,29 @@ resource "google_project_service" "backupdr" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "dr_backupdr" {
+  provider           = google
+  project            = var.dr_project_id
+  service            = "backupdr.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service_identity" "dr_backupdr_sa" {
+  provider = google-beta.dr
+  project  = var.dr_project_id
+  service  = "backupdr.googleapis.com"
+
+  depends_on = [google_project_service.dr_backupdr]
+}
+
+resource "google_project_service_identity" "dr_alloydb_sa" {
+  provider = google-beta.dr
+  project  = var.dr_project_id
+  service  = "alloydb.googleapis.com"
+
+  depends_on = [google_project_service.dr_alloydb]
+}
+
 resource "google_project_service" "compute" {
   provider           = google
   project            = var.project_id
@@ -102,6 +125,7 @@ resource "time_sleep" "wait_for_apis" {
 
   depends_on = [
     google_project_service.backupdr,
+    google_project_service.dr_backupdr,
     google_project_service.compute,
     google_project_service.servicenetworking,
     google_project_service.sqladmin,
