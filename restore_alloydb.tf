@@ -107,7 +107,13 @@ resource "google_project_iam_member" "caller_source_alloydb_admin" {
 
 # Restore the AlloyDB Cluster from GCBDR via local gcloud CLI in target project
 resource "terraform_data" "restored_alloydb_cluster" {
-  count = (var.perform_dr_test && var.provision_alloydb && try(one(data.external.latest_alloydb_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
+  count = var.perform_dr_test && var.provision_alloydb ? 1 : 0
+
+  input = {
+    cluster_id = "restored-alloydb-cluster${var.restore_suffix}"
+    project    = var.dr_project_id
+    region     = var.region
+  }
 
   triggers_replace = [
     data.external.latest_alloydb_backup[0].result.full_backup_id
@@ -115,11 +121,26 @@ resource "terraform_data" "restored_alloydb_cluster" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      gcloud beta alloydb clusters restore restored-alloydb-cluster${var.restore_suffix} \
-        --project=${var.dr_project_id} \
-        --region=${var.region} \
-        --network="projects/${var.host_project_id}/global/networks/${var.dr_vpc_name}" \
-        --backupdr-backup=${data.external.latest_alloydb_backup[0].result.full_backup_id}
+      if [ "${data.external.latest_alloydb_backup[0].result.backup_id}" != "dummy" ]; then
+        gcloud beta alloydb clusters restore ${self.output.cluster_id} \
+          --project=${self.output.project} \
+          --region=${self.output.region} \
+          --network="projects/${var.host_project_id}/global/networks/${var.dr_vpc_name}" \
+          --backupdr-backup=${data.external.latest_alloydb_backup[0].result.full_backup_id}
+      else
+        echo "[WARNING] Backup ID is dummy, skipping gcloud restore."
+      fi
+    EOT
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      gcloud beta alloydb clusters delete ${self.output.cluster_id} \
+        --project=${self.output.project} \
+        --region=${self.output.region} \
+        --force \
+        --quiet 2>/dev/null || true
     EOT
   }
 
@@ -139,7 +160,7 @@ resource "terraform_data" "restored_alloydb_cluster" {
 
 # Provision a Primary Instance in the restored cluster so it is queryable
 resource "google_alloydb_instance" "restored_alloydb_instance" {
-  count    = (var.perform_dr_test && var.provision_alloydb && try(one(data.external.latest_alloydb_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
+  count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
   provider = google-beta.dr_source_region
 
   cluster       = "projects/${var.dr_project_id}/locations/${var.region}/clusters/restored-alloydb-cluster${var.restore_suffix}"

@@ -137,6 +137,8 @@ To remove only the restored resources (leaving backups intact):
 ```bash
 # Destroy Restored Workloads
 terraform destroy \
+  -target=google_alloydb_instance.restored_alloydb_instance \
+  -target=terraform_data.restored_alloydb_cluster \
   -target=google_backup_dr_restore_workload.restore_vms \
   -target=google_backup_dr_restore_workload.restore_vm_rocky \
   -target=google_backup_dr_restore_workload.restore_rocky_disk \
