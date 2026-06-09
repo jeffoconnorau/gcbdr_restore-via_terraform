@@ -4,11 +4,11 @@
 
 locals {
   # Map of VMs to restore -> Vault Name (Resource Name)
-  vms_to_restore = {
+  vms_to_restore = var.provision_compute_vms ? {
     "vm-debian" = google_backup_dr_backup_vault.vault.backup_vault_id
     "vm-ubuntu" = google_backup_dr_backup_vault.vault.backup_vault_id
     # vm-rocky is handled separately for CMEK/Infra Prod restore
-  }
+  } : {}
 }
 
 # 1. Fetch Latest Backup ID (Dynamic) for EACH VM (Standard)
@@ -131,36 +131,12 @@ resource "random_id" "restore_suffix" {
 }
 
 # ------------------------------------------------------------------------------
-# Workaround: Apply Labels Post-Restore
-# The native resource's `labels` block might not propagate correctly in Beta.
-# ------------------------------------------------------------------------------
-resource "null_resource" "apply_labels" {
-  for_each = { for k, v in data.external.latest_backup : k => v if var.perform_dr_test && v.result.backup_id != "dummy" }
-
-  triggers = {
-    # Force run on every apply to ensure labels are patched, as Provider often drops them
-    always_run = timestamp()
-  }
-
-  provisioner "local-exec" {
-    command = <<EOT
-      gcloud compute instances add-labels "${each.key}${var.restore_suffix}" \
-        --project=${var.dr_project_id} \
-        --zone=${var.dr_region}-a \
-        --labels=dr=test
-    EOT
-  }
-
-  depends_on = [google_backup_dr_restore_workload.restore_vms]
-}
-
-# ------------------------------------------------------------------------------
 # Disk Restore Configuration
 # ------------------------------------------------------------------------------
 
 # 4. Fetch Latest Disk Backup
 data "external" "latest_disk_backup" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_compute_pd ? 1 : 0
 
   program = ["bash", "${path.module}/scripts/get_latest_backup.sh"]
 
@@ -178,7 +154,7 @@ data "external" "latest_disk_backup" {
 # We need to check if it supports Disk restore (compute.googleapis.com/Disk).
 # Based on API docs, it does.
 resource "google_backup_dr_restore_workload" "restore_disk" {
-  count = (var.perform_dr_test && try(one(data.external.latest_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
+  count = (var.perform_dr_test && var.provision_compute_pd && try(one(data.external.latest_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   provider = google-beta
   location = var.region
@@ -205,7 +181,7 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
 # 6. Attach Restored Disk to Restored VM
 # We only do this for vm-debian as that's where the data disk belongs
 resource "google_compute_attached_disk" "attach_restored_disk" {
-  count = (var.perform_dr_test && try(one(data.external.latest_disk_backup).result.backup_id, "dummy") != "dummy" && contains(keys(google_backup_dr_restore_workload.restore_vms), "vm-debian")) ? 1 : 0
+  count = (var.perform_dr_test && var.provision_compute_pd && var.provision_compute_vms && try(one(data.external.latest_disk_backup).result.backup_id, "dummy") != "dummy" && contains(keys(google_backup_dr_restore_workload.restore_vms), "vm-debian")) ? 1 : 0
 
   disk     = google_backup_dr_restore_workload.restore_disk[0].target_resource[0].gcp_resource[0].gcp_resourcename
   instance = google_backup_dr_restore_workload.restore_vms["vm-debian"].target_resource[0].gcp_resource[0].gcp_resourcename
@@ -235,7 +211,7 @@ resource "google_project_iam_member" "vault_sa_infra_prod_permissions" {
 
 # Fetch Latest Backup for Rocky VM
 data "external" "latest_backup_rocky" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_compute_vms ? 1 : 0
 
   program = ["bash", "${path.module}/scripts/get_latest_backup.sh"]
 
@@ -250,7 +226,7 @@ data "external" "latest_backup_rocky" {
 
 # Restore Rocky VM to Infra Prod
 resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
-  count = (var.perform_dr_test && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
+  count = (var.perform_dr_test && var.provision_compute_vms && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   provider = google-beta.gcbdr
   location = var.region
@@ -307,7 +283,7 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
 
 # 7. Fetch Latest Rocky Disk Backup
 data "external" "latest_rocky_disk_backup" {
-  count = var.perform_dr_test ? 1 : 0
+  count = var.perform_dr_test && var.provision_compute_pd ? 1 : 0
 
   program = ["bash", "${path.module}/scripts/get_latest_backup.sh"]
 
@@ -322,7 +298,7 @@ data "external" "latest_rocky_disk_backup" {
 
 # 8. Restore Rocky Disk
 resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
-  count = (var.perform_dr_test && try(one(data.external.latest_rocky_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
+  count = (var.perform_dr_test && var.provision_compute_pd && try(one(data.external.latest_rocky_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   provider = google-beta.gcbdr
   location = var.region
@@ -357,7 +333,7 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
 
 # 9. Attach Restored Rocky Disk to Restored VM
 resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
-  count = (var.perform_dr_test && try(one(data.external.latest_rocky_disk_backup).result.backup_id, "dummy") != "dummy" && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
+  count = (var.perform_dr_test && var.provision_compute_pd && var.provision_compute_vms && try(one(data.external.latest_rocky_disk_backup).result.backup_id, "dummy") != "dummy" && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
   provider = google.infra_prod
 
@@ -374,98 +350,4 @@ resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
   ]
 }
 
-# Workaround: Force-apply labels using gcloud since provider propagation is unreliable
-resource "null_resource" "tag_restored_vm" {
-  count = (var.perform_dr_test && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
-
-  triggers = {
-    # Force run on every apply to ensure labels are patched
-    always_run = timestamp()
-  }
-
-  provisioner "local-exec" {
-    command = <<EOT
-      gcloud compute instances add-labels vm-rocky${var.restore_suffix} \
-        --project=${var.infra_prod_project_id} \
-        --zone=${var.region}-c \
-        --labels=dr=test
-    EOT
-  }
-
-  depends_on = [google_backup_dr_restore_workload.restore_vm_rocky]
-}
-
-# ------------------------------------------------------------------------------
-# Automated Cleanup Hooks for Terraform Destroy
-# ------------------------------------------------------------------------------
-# Because google_backup_dr_restore_workload only manages the "Restore Job" API call, 
-# the resulting Compute Engine VMs and Disks are unmanaged and persist after the job is destroyed.
-# This blocks terraform from destroying the subnetwork. These hooks force-delete them.
-
-resource "null_resource" "cleanup_restored_vms" {
-  for_each = { for k, v in data.external.latest_backup : k => v if var.perform_dr_test && v.result.backup_id != "dummy" }
-
-  triggers = {
-    project = var.dr_project_id
-    zone    = "${var.dr_region}-a"
-    vm_name = "${each.key}${var.restore_suffix}"
-  }
-
-  provisioner "local-exec" {
-    when    = destroy
-    command = "gcloud compute instances delete ${self.triggers.vm_name} --project=${self.triggers.project} --zone=${self.triggers.zone} --quiet || true"
-  }
-
-  depends_on = [google_backup_dr_restore_workload.restore_vms]
-}
-
-resource "null_resource" "cleanup_restored_disk" {
-  count = (var.perform_dr_test && try(one(data.external.latest_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
-
-  triggers = {
-    project   = var.dr_project_id
-    zone      = "${var.dr_region}-a"
-    disk_name = "vm-debian-data-disk${var.restore_suffix}"
-  }
-
-  provisioner "local-exec" {
-    when    = destroy
-    command = "gcloud compute disks delete ${self.triggers.disk_name} --project=${self.triggers.project} --zone=${self.triggers.zone} --quiet || true"
-  }
-
-  depends_on = [google_backup_dr_restore_workload.restore_disk]
-}
-
-resource "null_resource" "cleanup_restored_rocky_vm" {
-  count = (var.perform_dr_test && try(one(data.external.latest_backup_rocky).result.backup_id, "dummy") != "dummy") ? 1 : 0
-
-  triggers = {
-    project = var.infra_prod_project_id
-    zone    = "${var.region}-c"
-    vm_name = "vm-rocky${var.restore_suffix}"
-  }
-
-  provisioner "local-exec" {
-    when    = destroy
-    command = "gcloud compute instances delete ${self.triggers.vm_name} --project=${self.triggers.project} --zone=${self.triggers.zone} --quiet || true"
-  }
-
-  depends_on = [google_backup_dr_restore_workload.restore_vm_rocky]
-}
-
-resource "null_resource" "cleanup_restored_rocky_disk" {
-  count = (var.perform_dr_test && try(one(data.external.latest_rocky_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
-
-  triggers = {
-    project   = var.infra_prod_project_id
-    zone      = "${var.region}-c"
-    disk_name = "vm-rocky-data-disk${var.restore_suffix}"
-  }
-
-  provisioner "local-exec" {
-    when    = destroy
-    command = "gcloud compute disks delete ${self.triggers.disk_name} --project=${self.triggers.project} --zone=${self.triggers.zone} --quiet || true"
-  }
-
-  depends_on = [google_backup_dr_restore_workload.restore_rocky_disk]
-}
+# Cleaned up all legacy null_resource cleanups to avoid resource conflict 409 errors

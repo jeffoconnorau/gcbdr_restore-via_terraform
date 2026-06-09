@@ -11,7 +11,7 @@ data "external" "latest_filestore_backup" {
 
   query = {
     project       = var.project_id
-    location      = "${var.region}-a" # Source region zone-a
+    location      = var.region
     instance_name = try(google_filestore_instance.fs_share[0].name, "fs-share-unknown")
     vault_id      = google_backup_dr_backup_vault.vault.backup_vault_id
     vault_project = var.project_id

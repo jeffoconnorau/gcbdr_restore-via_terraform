@@ -18,17 +18,22 @@ fi
 echo "[INFO] Starting dynamic backup discovery for instance: $INSTANCE_NAME" >&2
 echo "[INFO] Project: $PROJECT, Location: $LOCATION, Vault: $VAULT_ID, Vault Project: $VAULT_PROJECT" >&2
 
-# 1. List all data sources and filter with jq (more robust than gcloud filter for complex objects)
-# Fetch JSON list of all data sources in the vault
+# Initialize debug log immediately so it is guaranteed to exist
+echo "=== Starting Discovery Run $(date) ===" > debug_discovery.log
+echo "Querying DataSources: Project=$VAULT_PROJECT, Location=$LOCATION, Vault=$VAULT_ID, Instance=$INSTANCE_NAME" >> debug_discovery.log
+
 echo "[INFO] Fetching list of all Data Sources in the Vault..." >&2
 ALL_DATASOURCES_JSON=$(gcloud backup-dr data-sources list \
   --project="$VAULT_PROJECT" \
   --location="$LOCATION" \
   --backup-vault="$VAULT_ID" \
-  --format="json" 2>/dev/null) || true
+  --format="json" 2>> debug_discovery.log) || true
 
-if [[ -z "$ALL_DATASOURCES_JSON" ]]; then
-  echo "[WARNING] Vault not found or gcloud failed. Returning dummy data for Terraform plan." >&2
+echo "DataSources JSON returned length: ${#ALL_DATASOURCES_JSON}" >> debug_discovery.log
+
+if [[ -z "$ALL_DATASOURCES_JSON" || "$ALL_DATASOURCES_JSON" == "null" || "$ALL_DATASOURCES_JSON" == "[]" ]]; then
+  echo "[WARNING] Vault empty, not found, or gcloud failed. Check debug_discovery.log for details." >&2
+  echo "Result: Vault empty or gcloud failed" >> debug_discovery.log
   echo '{"backup_id": "dummy", "backup_vault_id": "dummy", "data_source_id": "dummy", "location": "dummy", "full_backup_id": "dummy"}'
   exit 0
 fi
@@ -53,10 +58,9 @@ if [[ "$INSTANCE_NAME" == *"disk"* ]]; then
   done
 fi
 
-# Filter for the instance name using jq
-# Check known paths for Instance (name), SQL (name), and Disks (gcpResourcename with ID)
-DATASOURCE_ID=$(echo "$ALL_DATASOURCES_JSON" | jq -r --arg NAME "$INSTANCE_NAME" --arg DISK_ID "$DISK_ID" '
-  .[] | select(
+# Log matching candidates to debug file before backupCount filter
+echo "$ALL_DATASOURCES_JSON" | jq -r --arg NAME "$INSTANCE_NAME" --arg DISK_ID "$DISK_ID" '
+  map(select(
     (.dataSourceGcpResource.computeInstanceDatasourceProperties.name // "" | endswith("/" + $NAME)) or
     (.dataSourceGcpResource.cloudSqlInstanceDatasourceProperties.name // "" | endswith("/" + $NAME)) or
     (.dataSourceGcpResource.computeDiskDatasourceProperties.name // "" | endswith("/" + $NAME)) or
@@ -65,10 +69,27 @@ DATASOURCE_ID=$(echo "$ALL_DATASOURCES_JSON" | jq -r --arg NAME "$INSTANCE_NAME"
     (.dataSourceGcpResource.gcpResourcename // "" | endswith("/clusters/" + $NAME)) or
     ($DISK_ID != "" and (.dataSourceGcpResource.gcpResourcename // "" | endswith("/disks/" + $DISK_ID))) or
     (.name | contains($NAME))
-  ) | .name' | head -n 1)
+  )) | "Candidate DataSources for \($NAME): \(map({name: .name, backupCount: .backupCount}))"
+' >> debug_discovery.log 2>/dev/null || true
+
+DATASOURCE_ID=$(echo "$ALL_DATASOURCES_JSON" | jq -r --arg NAME "$INSTANCE_NAME" --arg DISK_ID "$DISK_ID" '
+  map(select(
+    (.dataSourceGcpResource.computeInstanceDatasourceProperties.name // "" | endswith("/" + $NAME)) or
+    (.dataSourceGcpResource.cloudSqlInstanceDatasourceProperties.name // "" | endswith("/" + $NAME)) or
+    (.dataSourceGcpResource.computeDiskDatasourceProperties.name // "" | endswith("/" + $NAME)) or
+    (.dataSourceGcpResource.gcpResourcename // "" | endswith("/" + $NAME)) or
+    (.dataSourceGcpResource.gcpResourcename // "" | endswith("/instances/" + $NAME)) or
+    (.dataSourceGcpResource.gcpResourcename // "" | endswith("/clusters/" + $NAME)) or
+    ($DISK_ID != "" and (.dataSourceGcpResource.gcpResourcename // "" | endswith("/disks/" + $DISK_ID))) or
+    (.name | contains($NAME))
+  ))
+  | map(select((.backupCount // "0" | tonumber) > 0))
+  | sort_by(.createTime) | reverse | .[0].name // ""
+')
 
 if [[ -z "$DATASOURCE_ID" || "$DATASOURCE_ID" == "null" ]]; then
-  echo "[WARNING] Data source NOT FOUND for instance $INSTANCE_NAME. Returning dummy data for Terraform plan." >&2
+  echo "[WARNING] Data source NOT FOUND (or has 0 backups) for instance $INSTANCE_NAME. Returning dummy data." >&2
+  echo "Result: DataSource NOT FOUND or backupCount == 0" >> debug_discovery.log
   echo '{"backup_id": "dummy", "backup_vault_id": "dummy", "data_source_id": "dummy", "location": "dummy", "full_backup_id": "dummy"}'
   exit 0
 fi
@@ -76,25 +97,24 @@ fi
 echo "[INFO] Identified Data Source ID: $DATASOURCE_ID" >&2
 
 # 2. Find Latest Backup for the Data Source
-# Filter keys like 'dataSource' are not reliable in gcloud list output for this resource.
-# Fetching all backups in the vault and filtering client-side.
-echo "[INFO] Fetching list of all Backups in the region..." >&2
+DATASOURCE_ID_SHORT=$(echo "$DATASOURCE_ID" | sed -E 's/.*dataSources\///')
+echo "[INFO] Fetching Backups for DataSource $DATASOURCE_ID_SHORT..." >&2
+
 ALL_BACKUPS_JSON=$(gcloud backup-dr backups list \
   --project="$VAULT_PROJECT" \
   --location="$LOCATION" \
-  --format="json")
+  --backup-vault="$VAULT_ID" \
+  --data-source="$DATASOURCE_ID_SHORT" \
+  --format="json" 2>> debug_discovery.log) || true
 
-BACKUP_COUNT=$(echo "$ALL_BACKUPS_JSON" | jq length)
-echo "[INFO] Found $BACKUP_COUNT total Backups. Filtering for Data Source..." >&2
+echo "=== Backups Discovery Run $(date) ===" >> debug_discovery.log
+echo "Backups JSON returned for $DATASOURCE_ID_SHORT length: ${#ALL_BACKUPS_JSON}" >> debug_discovery.log
+echo "$ALL_BACKUPS_JSON" >> debug_discovery.log
 
-# Filter for backups belonging to the datasource and pick latest (sort by createTime desc)
-BACKUP_ID=$(echo "$ALL_BACKUPS_JSON" | jq -r --arg DS_ID "$DATASOURCE_ID" '
-  map(select(.name | startswith($DS_ID + "/backups/")))
-  | sort_by(.createTime) | reverse | .[0].name // ""
-')
+BACKUP_ID=$(echo "$ALL_BACKUPS_JSON" | jq -r 'sort_by(.createTime) | reverse | .[0].name // ""' 2>/dev/null || echo "")
 
-if [[ -z "$BACKUP_ID" || "$BACKUP_ID" == "null" ]]; then
-  echo "[WARNING] No backups found for Data Source $DATASOURCE_ID. Returning dummy data for Terraform plan." >&2
+if [[ -z "$BACKUP_ID" || "$BACKUP_ID" == "null" || "$BACKUP_ID" == "dummy" ]]; then
+  echo "[WARNING] No backups returned for DataSource $DATASOURCE_ID_SHORT. Returning dummy data." >&2
   echo '{"backup_id": "dummy", "backup_vault_id": "dummy", "data_source_id": "dummy", "location": "dummy", "full_backup_id": "dummy"}'
   exit 0
 fi

@@ -322,31 +322,29 @@ resource "google_filestore_instance" "restored_fs_share" {
 
 ### 4.5. AlloyDB Restore
 
-Restored using standard `google_alloydb_cluster` with the `restore_backupdr_backup_source` block. A queryable primary instance must then be provisioned inside the restored cluster.
+Restored using `terraform_data` with a `local-exec` provisioner executing `gcloud beta alloydb clusters restore`, as declarative HCL support is not yet available. A queryable primary instance must then be provisioned inside the restored cluster.
 
 ```hcl
-# Restore cluster storage volume
-resource "google_alloydb_cluster" "restored_alloydb_cluster" {
-  provider   = google-beta.dr
-  cluster_id = "restored-alloydb-cluster"
-  location   = var.dr_region
+# Restore cluster storage volume via local gcloud CLI
+resource "terraform_data" "restored_alloydb_cluster" {
+  triggers_replace = [
+    data.external.latest_alloydb_backup[0].result.full_backup_id
+  ]
 
-  network_config {
-    network = "projects/${var.dr_project_id}/global/networks/dr-vpc"
+  provisioner "local-exec" {
+    command = <<-EOT
+      gcloud beta alloydb clusters restore restored-alloydb-cluster \
+        --project=$${var.dr_project_id} \
+        --region=$${var.dr_region} \
+        --backupdr-backup=$${data.external.latest_alloydb_backup[0].result.full_backup_id}
+    EOT
   }
-
-  # Native GCBDR Restore Block
-  restore_backupdr_backup_source {
-    backup = data.external.latest_alloydb_backup[0].result.full_backup_id
-  }
-
-  deletion_protection = false
 }
 
 # Provision primary queryable instance inside the restored cluster
 resource "google_alloydb_instance" "restored_alloydb_instance" {
   provider      = google-beta.dr
-  cluster       = google_alloydb_cluster.restored_alloydb_cluster.id
+  cluster       = "projects/$${var.dr_project_id}/locations/$${var.dr_region}/clusters/restored-alloydb-cluster"
   instance_id   = "restored-alloydb-primary"
   instance_type = "PRIMARY"
 
@@ -355,6 +353,10 @@ resource "google_alloydb_instance" "restored_alloydb_instance" {
   }
 
   availability_type = "ZONAL"
+
+  depends_on = [
+    terraform_data.restored_alloydb_cluster
+  ]
 }
 ```
 

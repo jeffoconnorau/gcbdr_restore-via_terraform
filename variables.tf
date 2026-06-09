@@ -43,6 +43,18 @@ variable "provision_cloud_sql" {
   default     = false
 }
 
+variable "provision_compute_vms" {
+  description = "Whether to provision Compute Engine VMs and their backup plans."
+  type        = bool
+  default     = true
+}
+
+variable "provision_compute_pd" {
+  description = "Whether to provision Compute Engine persistent data disks and their backup plans."
+  type        = bool
+  default     = true
+}
+
 variable "psa_range_name" {
   description = "The name of the reserved IP range for PSA."
   type        = string

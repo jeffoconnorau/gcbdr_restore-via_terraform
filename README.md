@@ -88,14 +88,19 @@ terraform apply \
 > [!NOTE]
 > The Terraform configurations define a scheduled daily backup window (e.g., `12:00 - 24:00 UTC`). If you want to test the restore process immediately after provisioning without waiting hours for the automated window, you must manually trigger an "On-Demand Backup" for each Data Source via the Google Cloud Console (make sure to check both your source and GCBDR projects).
 
-Once the baseline infrastructure is deployed and **the initial backups have successfully completed**, you can then trigger the restore process. This explicitly uses `perform_dr_test=true` to dynamically find the latest backups and restore them according to the Split-Brain strategy.
+> [!IMPORTANT]
+> **CRITICAL REQUIREMENT: Run Restore Testing TWICE on First Attempt**
+> When setting `perform_dr_test=true` for the first time in a new environment, Terraform must execute a **Two-Phase Apply Lifecycle**:
+> - **1st Pass**: Plans and binds the necessary cross-project IAM roles (`roles/backupdr.restoreUser` and `roles/alloydb.admin`). Because data sources run during the *Plan* phase before these roles exist, dynamic backup discovery gracefully falls back to `"dummy"`. Workloads will report "No changes".
+> - **TIMING DELAY**: Google Cloud IAM cross-project replication can take up to **5 minutes** to fully propagate new role bindings across regional endpoints. **Please pause for ~5 minutes after completing Pass 1**.
+> - **2nd Pass**: Re-running the apply authenticates successfully with the newly propagated IAM roles, locates the real recovery point IDs, and actively triggers workload restoration.
+> 
+> **Always run `./run_restore.sh` twice (with a ~5 min pause)** when activating DR testing!
+
+Once the baseline infrastructure is deployed, **the initial backups have successfully completed**, and cross-project IAM privileges are bound, you can trigger the restore process using the provided wrapper script:
 
 ```bash
-terraform apply \
-  -var="perform_dr_test=true" \
-  -var="provision_cloud_sql=true" \
-  -var="create_isolated_dr_vpc=true" \
-  -var="restore_suffix=-dr"
+./run_restore.sh
 ```
 
 #### Optimizing Restore Concurrency

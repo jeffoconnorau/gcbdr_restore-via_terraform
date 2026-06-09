@@ -56,6 +56,12 @@ provider "google-beta" {
 }
 
 provider "google-beta" {
+  alias   = "dr_source_region"
+  project = var.dr_project_id
+  region  = var.region
+}
+
+provider "google-beta" {
   alias   = "gcbdr"
   project = var.gcbdr_project_id
   region  = var.region

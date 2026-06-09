@@ -33,6 +33,8 @@ infra_prod_project_id   = "cmek-source-project-id"
 
 perform_dr_test         = true
 create_isolated_dr_vpc  = true
+provision_compute_vms   = true
+provision_compute_pd    = true
 provision_cloud_sql     = false
 provision_filestore     = false
 provision_alloydb       = false

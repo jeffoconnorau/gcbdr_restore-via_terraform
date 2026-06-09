@@ -53,3 +53,7 @@ Thumbs.db
 credentials.json
 account.json
 key.json
+
+# Discovery logs
+debug_discovery.log
+*.log

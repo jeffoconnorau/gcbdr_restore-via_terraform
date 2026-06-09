@@ -83,46 +83,45 @@ resource "google_project_iam_member" "caller_source_backupdr_permissions" {
   depends_on = [time_sleep.wait_for_apis]
 }
 
-# Grant DR AlloyDB Service Agent permission to view backups in Source Project
-resource "google_project_iam_member" "dr_alloydb_sa_source_alloydb_viewer" {
+# Grant DR AlloyDB Service Agent permission to manage/restore from Source Project
+resource "google_project_iam_member" "dr_alloydb_sa_source_alloydb_admin" {
   count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
   provider = google
   project  = var.project_id
-  role     = "roles/alloydb.viewer"
+  role     = "roles/alloydb.admin"
   member   = "serviceAccount:${google_project_service_identity.dr_alloydb_sa.email}"
 
   depends_on = [time_sleep.wait_for_apis]
 }
 
-# Grant the caller permissions in the source project to view AlloyDB resources
-resource "google_project_iam_member" "caller_source_alloydb_viewer" {
+# Grant the caller permissions in the source project to restore AlloyDB resources across projects
+resource "google_project_iam_member" "caller_source_alloydb_admin" {
   count    = var.perform_dr_test && var.provision_alloydb ? 1 : 0
   provider = google
   project  = var.project_id
-  role     = "roles/alloydb.viewer"
+  role     = "roles/alloydb.admin"
   member   = local.caller_member
 
   depends_on = [time_sleep.wait_for_apis]
 }
 
-# Restore the AlloyDB Cluster from GCBDR
-resource "google_alloydb_cluster" "restored_alloydb_cluster" {
-  count    = (var.perform_dr_test && var.provision_alloydb && try(one(data.external.latest_alloydb_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
-  provider = google-beta.dr
+# Restore the AlloyDB Cluster from GCBDR via local gcloud CLI in target project
+resource "terraform_data" "restored_alloydb_cluster" {
+  count = (var.perform_dr_test && var.provision_alloydb && try(one(data.external.latest_alloydb_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
-  cluster_id = "restored-alloydb-cluster${var.restore_suffix}"
-  location   = var.dr_region
+  triggers_replace = [
+    data.external.latest_alloydb_backup[0].result.full_backup_id
+  ]
 
-  network_config {
-    network = var.create_isolated_dr_vpc ? google_compute_network.isolated_dr_vpc[0].id : "projects/${var.host_project_id}/global/networks/${var.dr_vpc_name}"
+  provisioner "local-exec" {
+    command = <<-EOT
+      gcloud beta alloydb clusters restore restored-alloydb-cluster${var.restore_suffix} \
+        --project=${var.dr_project_id} \
+        --region=${var.region} \
+        --network="projects/${var.host_project_id}/global/networks/${var.dr_vpc_name}" \
+        --backupdr-backup=${data.external.latest_alloydb_backup[0].result.full_backup_id}
+    EOT
   }
-
-  # Native GCBDR Restore Block
-  restore_backupdr_backup_source {
-    backup = data.external.latest_alloydb_backup[0].result.full_backup_id
-  }
-
-  deletion_protection = false
 
   depends_on = [
     time_sleep.wait_for_apis,
@@ -130,10 +129,10 @@ resource "google_alloydb_cluster" "restored_alloydb_cluster" {
     google_project_iam_member.vault_sa_dr_alloydb_operator,
     google_project_iam_member.vault_sa_dr_sa_user,
     google_project_iam_member.dr_alloydb_sa_source_backupdr_permissions,
-    google_project_iam_member.dr_alloydb_sa_source_alloydb_viewer,
+    google_project_iam_member.dr_alloydb_sa_source_alloydb_admin,
     google_project_iam_member.dr_backupdr_sa_source_backupdr_permissions,
     google_project_iam_member.caller_source_backupdr_permissions,
-    google_project_iam_member.caller_source_alloydb_viewer,
+    google_project_iam_member.caller_source_alloydb_admin,
     google_service_networking_connection.dr_private_vpc_connection
   ]
 }
@@ -141,9 +140,9 @@ resource "google_alloydb_cluster" "restored_alloydb_cluster" {
 # Provision a Primary Instance in the restored cluster so it is queryable
 resource "google_alloydb_instance" "restored_alloydb_instance" {
   count    = (var.perform_dr_test && var.provision_alloydb && try(one(data.external.latest_alloydb_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
-  provider = google-beta.dr
+  provider = google-beta.dr_source_region
 
-  cluster       = google_alloydb_cluster.restored_alloydb_cluster[0].id
+  cluster       = "projects/${var.dr_project_id}/locations/${var.region}/clusters/restored-alloydb-cluster${var.restore_suffix}"
   instance_id   = "restored-alloydb-primary${var.restore_suffix}"
   instance_type = "PRIMARY"
 
@@ -154,6 +153,6 @@ resource "google_alloydb_instance" "restored_alloydb_instance" {
   availability_type = "ZONAL"
 
   depends_on = [
-    google_alloydb_cluster.restored_alloydb_cluster
+    terraform_data.restored_alloydb_cluster
   ]
 }
