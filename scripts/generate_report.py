@@ -93,7 +93,7 @@ def parse_tfstate(state_path):
         if res_type == "google_backup_dr_restore_workload" and res_name in ["restore_vms", "restore_vm_rocky"]:
             for inst in res.get("instances", []):
                 attrs = inst.get("attributes", {})
-                source_name = inst.get("index_key", "vm-rocky") if res_name == "restore_vm_rocky" else inst.get("index_key", "")
+                source_name = "vm-rocky" if res_name == "restore_vm_rocky" else inst.get("index_key", "")
                 
                 target_resource = attrs.get("target_resource", [])
                 gcp_resname = ""
