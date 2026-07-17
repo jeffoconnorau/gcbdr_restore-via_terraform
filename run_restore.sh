@@ -23,16 +23,18 @@ echo "==========================================================================
 echo ""
 echo "[INFO] Running terraform apply with -parallelism=$PARALLELISM"
 START_EPOCH=$(date +%s)
-terraform apply -parallelism="$PARALLELISM" "$@"
+
+# Pipe output to log file and preserve exit status of terraform
+terraform apply -parallelism="$PARALLELISM" "$@" 2>&1 | tee terraform_apply.log
+APPLY_STATUS=${PIPESTATUS[0]}
 
 # Compile report on successful apply
-if [[ "$*" != *"-destroy"* ]] && [[ "$*" != *"plan"* ]] && [[ $? -eq 0 ]]; then
+if [[ "$*" != *"-destroy"* ]] && [[ "$*" != *"plan"* ]] && [[ $APPLY_STATUS -eq 0 ]]; then
   echo ""
   echo "========================================================================="
   echo "Step 2: Compiling Automated DR Drill Verification Report..."
   echo "========================================================================="
   echo "Waiting 5 seconds for telemetry logs to settle..."
   sleep 5
-  python3 scripts/generate_report.py "$START_EPOCH"
+  python3 scripts/generate_report.py "$START_EPOCH" "$(date +%s)" "terraform_apply.log"
 fi
-

@@ -36,7 +36,7 @@ resource "google_filestore_instance" "restored_fs_share" {
   tier     = "ZONAL"
 
   labels = {
-    dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
+    # dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
   }
 
   file_shares {

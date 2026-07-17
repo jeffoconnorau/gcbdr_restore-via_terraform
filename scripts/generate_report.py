@@ -130,11 +130,13 @@ def parse_terraform_durations_from_log(log_path):
     durations = {}
     if not os.path.exists(log_path):
         return durations
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     pattern = r"([a-zA-Z0-9_\.]+)(\[[0-9a-zA-Z_\-\"]+\])?: Creation complete after (?:(\d+)m)?(\d+)s"
     try:
         with open(log_path, "r") as f:
             for line in f:
-                match = re.search(pattern, line)
+                clean_line = ansi_escape.sub('', line)
+                match = re.search(pattern, clean_line)
                 if match:
                     res_address = match.group(1)
                     index = match.group(2) or ""

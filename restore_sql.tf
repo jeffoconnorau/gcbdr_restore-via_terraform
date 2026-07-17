@@ -37,7 +37,7 @@ resource "google_sql_database_instance" "restored_sql_pg" {
 
     user_labels = {
       dr              = "test"
-      dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
+      # dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
     }
 
     ip_configuration {
@@ -91,7 +91,7 @@ resource "google_sql_database_instance" "restored_sql_mysql" {
 
     user_labels = {
       dr              = "test"
-      dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
+      # dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
     }
 
     ip_configuration {

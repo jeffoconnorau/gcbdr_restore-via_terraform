@@ -152,17 +152,16 @@ resource "google_backup_dr_backup_plan" "bp_sql" {
   depends_on = [time_sleep.wait_for_vault]
 
   backup_rules {
-    rule_id               = "hourly-backup"
+    rule_id               = "daily-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type  = "HOURLY"
-      hourly_frequency = 1
-      time_zone        = "UTC"
+      recurrence_type = "DAILY"
       backup_window {
-        start_hour_of_day = 0
+        start_hour_of_day = 13
         end_hour_of_day   = 24
       }
+      time_zone = "UTC"
     }
   }
 }
@@ -388,17 +387,16 @@ resource "google_backup_dr_backup_plan" "bp_alloydb" {
   depends_on = [time_sleep.wait_for_vault]
 
   backup_rules {
-    rule_id               = "hourly-backup"
+    rule_id               = "daily-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type  = "HOURLY"
-      hourly_frequency = 1
-      time_zone        = "UTC"
+      recurrence_type = "DAILY"
       backup_window {
-        start_hour_of_day = 0
+        start_hour_of_day = 12
         end_hour_of_day   = 24
       }
+      time_zone = "UTC"
     }
   }
 }

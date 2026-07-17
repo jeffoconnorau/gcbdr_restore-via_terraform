@@ -71,10 +71,22 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
       value = "test"
     }
 
-    labels {
-      key   = "dependency_gate"
-      value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
-    }
+    # 
+
+
+    # 
+
+
+    # labels {
+
+
+    # key   = "dependency_gate"
+
+
+    # value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
+
+
+    # }
 
     # Target Network Interface (defines Target Project via subnetwork)
     advanced_machine_features {
@@ -267,10 +279,22 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
       value = "test"
     }
 
-    labels {
-      key   = "dependency_gate"
-      value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
-    }
+    # 
+
+
+    # 
+
+
+    # labels {
+
+
+    # key   = "dependency_gate"
+
+
+    # value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
+
+
+    # }
 
     advanced_machine_features {
       enable_uefi_networking = false
