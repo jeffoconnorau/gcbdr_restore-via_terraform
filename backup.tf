@@ -69,9 +69,6 @@ resource "google_backup_dr_backup_plan" "bp_vms" {
     standard_schedule {
       recurrence_type = "HOURLY"
       time_zone       = "UTC"
-      hourly_recurrence {
-        recurrence_interval = 1
-      }
     }
   }
 }
@@ -98,9 +95,6 @@ resource "google_backup_dr_backup_plan" "bp_rocky_cmek" {
     standard_schedule {
       recurrence_type = "HOURLY"
       time_zone       = "UTC"
-      hourly_recurrence {
-        recurrence_interval = 1
-      }
     }
   }
 }
@@ -123,9 +117,6 @@ resource "google_backup_dr_backup_plan" "bp_rocky_disk_cmek" {
     standard_schedule {
       recurrence_type = "HOURLY"
       time_zone       = "UTC"
-      hourly_recurrence {
-        recurrence_interval = 1
-      }
     }
   }
 }
@@ -152,9 +143,6 @@ resource "google_backup_dr_backup_plan" "bp_sql" {
     standard_schedule {
       recurrence_type = "HOURLY"
       time_zone       = "UTC"
-      hourly_recurrence {
-        recurrence_interval = 1
-      }
     }
   }
 }
@@ -291,9 +279,6 @@ resource "google_backup_dr_backup_plan" "bp_disk" {
     standard_schedule {
       recurrence_type = "HOURLY"
       time_zone       = "UTC"
-      hourly_recurrence {
-        recurrence_interval = 1
-      }
     }
   }
 }
@@ -338,9 +323,6 @@ resource "google_backup_dr_backup_plan" "bp_filestore" {
     standard_schedule {
       recurrence_type = "HOURLY"
       time_zone       = "UTC"
-      hourly_recurrence {
-        recurrence_interval = 1
-      }
     }
   }
 }
@@ -382,9 +364,6 @@ resource "google_backup_dr_backup_plan" "bp_alloydb" {
     standard_schedule {
       recurrence_type = "HOURLY"
       time_zone       = "UTC"
-      hourly_recurrence {
-        recurrence_interval = 1
-      }
     }
   }
 }
