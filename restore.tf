@@ -60,6 +60,12 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
     # Target Machine Type (Requires full URL)
     machine_type = "projects/${var.dr_project_id}/zones/${var.dr_region}-a/machineTypes/e2-micro"
 
+    # Ensure GCE boot disk is deleted when the VM is destroyed
+    disks {
+      boot        = true
+      auto_delete = true
+    }
+
     labels {
       key   = "dr"
       value = "test"
@@ -251,6 +257,12 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
 
     # Target Machine Type (Source Region)
     machine_type = "projects/${var.infra_prod_project_id}/zones/${var.region}-c/machineTypes/e2-micro"
+
+    # Ensure GCE boot disk is deleted when the VM is destroyed
+    disks {
+      boot        = true
+      auto_delete = true
+    }
 
     labels {
       key   = "dr"
