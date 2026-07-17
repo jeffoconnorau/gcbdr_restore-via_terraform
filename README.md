@@ -118,18 +118,21 @@ terraform apply \
 ```
 *Note: Because `-parallelism` is an execution engine flag for the Terraform CLI, it cannot be defined inside `variables.tf` or `terraform.tfvars` and must be passed as a command-line argument.*
 
-### 4. Verification
-After the apply completes:
+## Automated DR Drill Verification Dashboard
 
-**Standard VMs (DR Project):**
-```bash
-gcloud compute instances list --project=<your-dr-project-id>
-```
+This project includes an automated compliance reporting framework that compiles a high-fidelity visual dashboard after each restoration run.
 
-**CMEK VM (Source Project):**
-```bash
-gcloud compute instances list --project=<your-cmek-source-project-id> --filter="labels.dr=test"
-```
+### 1. How it works
+The `./run_restore.sh` wrapper script captures the exact T-0 start epoch of the restore. Upon successful completion of the Terraform apply phase, it automatically executes the Python report builder:
+- **Dynamic State Discovery**: The compiler parses `terraform.tfstate` (or its backup copy) to automatically locate all restored resources across all five resource categories (VMs, Disks, Cloud SQL, Filestore, and AlloyDB).
+- **Physical Throughput Metrics**: Calculates data provisioning transfer speeds in **MB/s** and **Gbps** for each restored storage volume.
+- **RTO Gantt Chart**: Plots a dynamic horizontal visual timeline mapping disk provisioning vs. guest OS boot phases (telemetry logs are captured for VMs, and managed services are marked as active immediately upon provisioning).
+- **Singapore-to-Jakarta Mapping**: Visualizes the Singapore (`asia-southeast1`) source to Jakarta (`asia-southeast2`) cross-region recovery flow.
+
+### 2. Output files
+- **Latest symlink**: A copy is saved at **`dr_test_report.html`** in the root directory. You can open this file directly in any browser to view the latest drill results.
+- **Audit History**: A timestamped backup is saved as `dr_report_YYYYMMDD_HHMMSS.html` to preserve historic compliance logs for security auditors.
+- **Git Safety**: Generated HTML reports are automatically excluded from version control in `.gitignore`.
 
 ### 5. Cleanup (Destroy Tests Only)
 To remove only the restored resources (leaving backups intact):
