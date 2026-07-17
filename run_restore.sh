@@ -22,4 +22,17 @@ echo "If workloads report No changes on pass 1, re-run this script to execute pa
 echo "================================================================================"
 echo ""
 echo "[INFO] Running terraform apply with -parallelism=$PARALLELISM"
+START_EPOCH=$(date +%s)
 terraform apply -parallelism="$PARALLELISM" "$@"
+
+# Compile report on successful apply
+if [[ "$*" != *"-destroy"* ]] && [[ "$*" != *"plan"* ]] && [[ $? -eq 0 ]]; then
+  echo ""
+  echo "========================================================================="
+  echo "Step 2: Compiling Automated DR Drill Verification Report..."
+  echo "========================================================================="
+  echo "Waiting 5 seconds for telemetry logs to settle..."
+  sleep 5
+  python3 scripts/generate_report.py "$START_EPOCH"
+fi
+
