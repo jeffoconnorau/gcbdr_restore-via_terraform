@@ -35,6 +35,10 @@ resource "google_filestore_instance" "restored_fs_share" {
   location = "${var.dr_region}-a"
   tier     = "ZONAL"
 
+  labels = {
+    # dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
+  }
+
   file_shares {
     capacity_gb = 1024 # Must match source capacity (1 TiB min for Zonal)
     name        = "vol1"
@@ -52,7 +56,6 @@ resource "google_filestore_instance" "restored_fs_share" {
   depends_on = [
     time_sleep.wait_for_apis,
     google_project_iam_member.vault_sa_dr_filestore_permissions,
-    google_service_networking_connection.dr_private_vpc_connection,
-    terraform_data.phase_1_complete
+    google_service_networking_connection.dr_private_vpc_connection
   ]
 }

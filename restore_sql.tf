@@ -36,7 +36,8 @@ resource "google_sql_database_instance" "restored_sql_pg" {
     availability_type = "ZONAL"            # Disable HA for Cost Savings/Test
 
     user_labels = {
-      dr = "test"
+      dr              = "test"
+      # dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
     }
 
     ip_configuration {
@@ -50,8 +51,7 @@ resource "google_sql_database_instance" "restored_sql_pg" {
 
   depends_on = [
     time_sleep.wait_for_apis,
-    google_service_networking_connection.dr_private_vpc_connection,
-    terraform_data.phase_1_complete
+    google_service_networking_connection.dr_private_vpc_connection
   ]
 }
 
@@ -90,7 +90,8 @@ resource "google_sql_database_instance" "restored_sql_mysql" {
     availability_type = "ZONAL"            # Disable HA for Cost Savings/Test
 
     user_labels = {
-      dr = "test"
+      dr              = "test"
+      # dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
     }
 
     ip_configuration {
@@ -104,7 +105,6 @@ resource "google_sql_database_instance" "restored_sql_mysql" {
 
   depends_on = [
     time_sleep.wait_for_apis,
-    google_service_networking_connection.dr_private_vpc_connection,
-    terraform_data.phase_1_complete
+    google_service_networking_connection.dr_private_vpc_connection
   ]
 }

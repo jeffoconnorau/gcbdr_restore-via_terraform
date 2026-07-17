@@ -63,16 +63,17 @@ resource "google_backup_dr_backup_plan" "bp_vms" {
   depends_on = [time_sleep.wait_for_vault]
 
   backup_rules {
-    rule_id               = "daily-backup"
+    rule_id               = "hourly-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "DAILY"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
       backup_window {
-        start_hour_of_day = 12
+        start_hour_of_day = 0
         end_hour_of_day   = 24
       }
-      time_zone = "UTC"
     }
   }
 }
@@ -93,16 +94,17 @@ resource "google_backup_dr_backup_plan" "bp_rocky_cmek" {
   depends_on = [time_sleep.wait_for_vault_cmek]
 
   backup_rules {
-    rule_id               = "daily-backup"
+    rule_id               = "hourly-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "DAILY"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
       backup_window {
-        start_hour_of_day = 12
+        start_hour_of_day = 0
         end_hour_of_day   = 24
       }
-      time_zone = "UTC"
     }
   }
 }
@@ -119,16 +121,17 @@ resource "google_backup_dr_backup_plan" "bp_rocky_disk_cmek" {
   depends_on = [time_sleep.wait_for_vault_cmek]
 
   backup_rules {
-    rule_id               = "daily-backup"
+    rule_id               = "hourly-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "DAILY"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
       backup_window {
-        start_hour_of_day = 12
+        start_hour_of_day = 0
         end_hour_of_day   = 24
       }
-      time_zone = "UTC"
     }
   }
 }
@@ -289,16 +292,17 @@ resource "google_backup_dr_backup_plan" "bp_disk" {
   depends_on = [time_sleep.wait_for_vault]
 
   backup_rules {
-    rule_id               = "daily-backup"
+    rule_id               = "hourly-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "DAILY"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
       backup_window {
-        start_hour_of_day = 12
+        start_hour_of_day = 0
         end_hour_of_day   = 24
       }
-      time_zone = "UTC"
     }
   }
 }
@@ -337,16 +341,17 @@ resource "google_backup_dr_backup_plan" "bp_filestore" {
   depends_on = [time_sleep.wait_for_vault]
 
   backup_rules {
-    rule_id               = "daily-backup"
+    rule_id               = "hourly-backup"
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "DAILY"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
       backup_window {
-        start_hour_of_day = 12
+        start_hour_of_day = 0
         end_hour_of_day   = 24
       }
-      time_zone = "UTC"
     }
   }
 }

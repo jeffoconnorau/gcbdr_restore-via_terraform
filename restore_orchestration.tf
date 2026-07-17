@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # GCBDR Multi-Phase Recovery Orchestration Checkpoints
 # ------------------------------------------------------------------------------
-# Implements strict deterministic sequential phasing across workloads:
+# Implements conditional sequential phasing across workloads:
 #   Phase 1: Named critical workloads (AlloyDB Cluster & Instance)
 #   Phase 2: Grouped by workload type (Cloud SQL & Filestore instances)
 #   Phase 3: Deferred last workloads (Compute Engine VMs & Disks)

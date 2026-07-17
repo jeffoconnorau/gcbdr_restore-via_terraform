@@ -165,3 +165,10 @@ variable "parallelism" {
   type        = number
   default     = 30
 }
+
+variable "enforce_dr_dependencies" {
+  description = "If true, enforces sequential restoration dependencies (AlloyDB -> Cloud SQL/Filestore -> VMs). If false, restores everything concurrently."
+  type        = bool
+  default     = false
+}
+

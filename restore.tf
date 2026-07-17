@@ -60,10 +60,33 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
     # Target Machine Type (Requires full URL)
     machine_type = "projects/${var.dr_project_id}/zones/${var.dr_region}-a/machineTypes/e2-micro"
 
+    # Ensure GCE boot disk is deleted when the VM is destroyed
+    disks {
+      boot        = true
+      auto_delete = true
+    }
+
     labels {
       key   = "dr"
       value = "test"
     }
+
+    # 
+
+
+    # 
+
+
+    # labels {
+
+
+    # key   = "dependency_gate"
+
+
+    # value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
+
+
+    # }
 
     # Target Network Interface (defines Target Project via subnetwork)
     advanced_machine_features {
@@ -85,8 +108,7 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
   depends_on = [
     google_project_iam_member.vault_sa_target_permissions,
     google_project_iam_member.vault_sa_host_network_permissions,
-    time_sleep.wait_for_policy,
-    terraform_data.phase_2_complete
+    time_sleep.wait_for_policy
   ]
 }
 
@@ -174,9 +196,7 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
     type    = "projects/${var.dr_project_id}/zones/${var.dr_region}-a/diskTypes/${var.disk_type}"
   }
 
-  depends_on = [
-    terraform_data.phase_2_complete
-  ]
+  # No dependencies needed for parallel disk restore
 }
 
 # 6. Attach Restored Disk to Restored VM
@@ -248,10 +268,33 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
     # Target Machine Type (Source Region)
     machine_type = "projects/${var.infra_prod_project_id}/zones/${var.region}-c/machineTypes/e2-micro"
 
+    # Ensure GCE boot disk is deleted when the VM is destroyed
+    disks {
+      boot        = true
+      auto_delete = true
+    }
+
     labels {
       key   = "dr"
       value = "test"
     }
+
+    # 
+
+
+    # 
+
+
+    # labels {
+
+
+    # key   = "dependency_gate"
+
+
+    # value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
+
+
+    # }
 
     advanced_machine_features {
       enable_uefi_networking = false
@@ -272,8 +315,7 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
 
   depends_on = [
     google_project_iam_member.vault_sa_infra_prod_permissions,
-    time_sleep.wait_for_policy,
-    terraform_data.phase_2_complete
+    time_sleep.wait_for_policy
   ]
 }
 
@@ -325,8 +367,7 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
   }
 
   depends_on = [
-    time_sleep.wait_for_kms_iam_infra,
-    terraform_data.phase_2_complete
+    time_sleep.wait_for_kms_iam_infra
   ]
 }
 

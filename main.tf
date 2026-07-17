@@ -66,6 +66,12 @@ resource "google_compute_instance" "vm_ubuntu" {
     enable_secure_boot = true
   }
 
+  lifecycle {
+    ignore_changes = [
+      attached_disk
+    ]
+  }
+
   depends_on = [time_sleep.wait_for_apis]
 }
 
@@ -105,6 +111,12 @@ resource "google_compute_instance" "vm_rocky" {
 
   shielded_instance_config {
     enable_secure_boot = true
+  }
+
+  lifecycle {
+    ignore_changes = [
+      attached_disk
+    ]
   }
 
   depends_on = [
