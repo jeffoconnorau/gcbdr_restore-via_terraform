@@ -48,7 +48,7 @@ def get_latest_restore_operation(operations, target_resource_name):
             matching.append(op)
             
     if not matching:
-        return None
+        return None, None
         
     def parse_time(op):
         return parse_rfc3339(op["metadata"]["createTime"])
@@ -59,7 +59,7 @@ def get_latest_restore_operation(operations, target_resource_name):
     start = parse_rfc3339(latest_op["metadata"]["createTime"])
     end = parse_rfc3339(latest_op["metadata"]["endTime"])
     
-    return int((end - start).total_seconds())
+    return int((end - start).total_seconds()), start
 
 def get_linux_boot_time(serial_log, start_time):
     pattern = r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2}).*systemd\[1\]: Startup finished in.*"
@@ -75,6 +75,39 @@ def get_linux_boot_time(serial_log, start_time):
             
     return None, "Timeout/Not found"
 
+def get_backup_consistency_time(full_backup_id):
+    if not full_backup_id or "dummy" in full_backup_id or "N/A" in full_backup_id or "Dynamic" in full_backup_id:
+        return "N/A"
+    try:
+        args = [
+            "gcloud", "backup-dr", "backups", "describe",
+            full_backup_id,
+            "--format=value(consistencyTime)"
+        ]
+        output = run_command(args).strip()
+        dt = parse_rfc3339(output)
+        return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+    except Exception as e:
+        return "N/A"
+
+def find_alloydb_backup_id(state_path):
+    if not os.path.exists(state_path):
+        return ""
+    try:
+        with open(state_path, "r") as f:
+            state = json.load(f)
+        resources = state.get("resources", [])
+        for res in resources:
+            if res.get("type") == "terraform_data" and res.get("name") == "restored_alloydb_cluster":
+                for inst in res.get("instances", []):
+                    attrs = inst.get("attributes", {})
+                    triggers = attrs.get("triggers_replace", [])
+                    if triggers:
+                        return triggers[0]
+    except Exception:
+        pass
+    return ""
+
 def parse_tfstate(state_path):
     if not os.path.exists(state_path):
         return []
@@ -84,6 +117,9 @@ def parse_tfstate(state_path):
         
     discovered = []
     resources = state.get("resources", [])
+    
+    # Pre-parse AlloyDB backup ID if available in this state file
+    alloydb_full_backup_id = find_alloydb_backup_id(state_path)
     
     for res in resources:
         res_type = res.get("type", "")
@@ -102,14 +138,22 @@ def parse_tfstate(state_path):
                     if gcp_res:
                         gcp_resname = gcp_res[0].get("gcp_resourcename", "")
                         
+                # Reconstruct full backup ID for VM
+                backup_id = attrs.get("backup_id", "")
+                vault_id = attrs.get("backup_vault_id", "")
+                ds_id = attrs.get("data_source_id", "")
+                loc = attrs.get("location", "asia-southeast1")
+                proj = "argo-svc-infra-prod" if "rocky" in source_name else "argo-svc-dev-3"
+                
+                full_backup_id = f"projects/{proj}/locations/{loc}/backupVaults/{vault_id}/dataSources/{ds_id}/backups/{backup_id}" if (backup_id and vault_id and ds_id) else "N/A"
+                
                 discovered.append({
                     "type": "Compute VM",
                     "source_name": source_name,
                     "target_name": attrs.get("id", "").split("/")[-1] or source_name,
-                    "backup_id": attrs.get("backup_id", "N/A"),
-                    "data_source_id": attrs.get("data_source_id", "N/A"),
-                    "location": attrs.get("location", "asia-southeast2"),
-                    "vault_id": attrs.get("backup_vault_id", "N/A"),
+                    "backup_id": backup_id or "N/A",
+                    "full_backup_id": full_backup_id,
+                    "location": loc,
                     "gcp_resource_name": gcp_resname,
                     "capacity_gb": 10 if "rocky" in source_name else 20
                 })
@@ -120,14 +164,21 @@ def parse_tfstate(state_path):
                 attrs = inst.get("attributes", {})
                 source_name = "vm-rocky-data-disk" if res_name == "restore_rocky_disk" else "vm-debian-data-disk"
                 
+                backup_id = attrs.get("backup_id", "")
+                vault_id = attrs.get("backup_vault_id", "")
+                ds_id = attrs.get("data_source_id", "")
+                loc = attrs.get("location", "asia-southeast1")
+                proj = "argo-svc-infra-prod" if "rocky" in source_name else "argo-svc-dev-3"
+                
+                full_backup_id = f"projects/{proj}/locations/{loc}/backupVaults/{vault_id}/dataSources/{ds_id}/backups/{backup_id}" if (backup_id and vault_id and ds_id) else "N/A"
+                
                 discovered.append({
                     "type": "Persistent Disk",
                     "source_name": source_name,
                     "target_name": attrs.get("id", "").split("/")[-1] or source_name,
-                    "backup_id": attrs.get("backup_id", "N/A"),
-                    "data_source_id": attrs.get("data_source_id", "N/A"),
-                    "location": attrs.get("location", "asia-southeast2"),
-                    "vault_id": attrs.get("backup_vault_id", "N/A"),
+                    "backup_id": backup_id or "N/A",
+                    "full_backup_id": full_backup_id,
+                    "location": loc,
                     "gcp_resource_name": attrs.get("id", ""),
                     "capacity_gb": 10
                 })
@@ -145,9 +196,8 @@ def parse_tfstate(state_path):
                     "source_name": source_name,
                     "target_name": attrs.get("name", ""),
                     "backup_id": backup_id,
-                    "data_source_id": "N/A",
+                    "full_backup_id": full_backup_id,
                     "location": attrs.get("region", "asia-southeast1"),
-                    "vault_id": "bv-asia-southeast1",
                     "gcp_resource_name": attrs.get("id", ""),
                     "capacity_gb": 10
                 })
@@ -167,9 +217,8 @@ def parse_tfstate(state_path):
                     "source_name": source_name,
                     "target_name": attrs.get("name", ""),
                     "backup_id": backup_id,
-                    "data_source_id": "N/A",
+                    "full_backup_id": full_backup_id,
                     "location": attrs.get("location", "asia-southeast2-a").split("-")[0] + "-" + attrs.get("location", "asia-southeast2-a").split("-")[1],
-                    "vault_id": "bv-asia-southeast1",
                     "gcp_resource_name": attrs.get("id", ""),
                     "capacity_gb": capacity_gb
                 })
@@ -181,15 +230,15 @@ def parse_tfstate(state_path):
                 source_name = "alloydb-cluster"
                 cluster_path = attrs.get("cluster", "")
                 cluster_id = cluster_path.split("/")[-1] if cluster_path else "restored-alloydb-cluster"
+                backup_id = alloydb_full_backup_id.split("/")[-1] if alloydb_full_backup_id else "N/A"
                 
                 discovered.append({
                     "type": "AlloyDB Cluster",
                     "source_name": source_name,
                     "target_name": cluster_id,
-                    "backup_id": "Dynamic",
-                    "data_source_id": "N/A",
+                    "backup_id": backup_id,
+                    "full_backup_id": alloydb_full_backup_id,
                     "location": attrs.get("region", "asia-southeast1"),
-                    "vault_id": "bv-asia-southeast1",
                     "gcp_resource_name": attrs.get("id", ""),
                     "capacity_gb": 10
                 })
@@ -206,6 +255,8 @@ def main():
         apply_end = float(sys.argv[2]) if len(sys.argv) > 2 else datetime.now().timestamp()
         total_apply_duration = int(apply_end - apply_start)
         
+        apply_start_dt = datetime.fromtimestamp(apply_start, timezone.utc)
+        
         lab_project = "argo-svc-dev-3"
         dr_project = "argo-svc-dev-4"
         gcbdr_project = "argo-svc-gcbdr"
@@ -217,37 +268,39 @@ def main():
         if not discovered_resources:
             # Check backup state in case it was a destroy or clean workspace
             backup_state_path = os.path.join(os.path.dirname(__file__), "..", "terraform.tfstate.backup")
+            print(f"[INFO] Using backup state file: {backup_state_path}")
             discovered_resources = parse_tfstate(backup_state_path)
             
         # Fallback default catalog if state is empty
         if not discovered_resources:
             print("[INFO] State empty. Using default catalog of restored resources for baseline report.")
             discovered_resources = [
-                {"type": "Compute VM", "source_name": "vm-debian", "target_name": "vm-debian-dr", "backup_id": "91e58154-c58f-4dea-b28c-2afb98f5119e", "location": "asia-southeast2", "vault_id": "bv-asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/zones/asia-southeast2-a/instances/vm-debian-dr", "capacity_gb": 20},
-                {"type": "Compute VM", "source_name": "vm-ubuntu", "target_name": "vm-ubuntu-dr", "backup_id": "2afb98f5-c58f-4dea-b28c-2afb98f5119e", "location": "asia-southeast2", "vault_id": "bv-asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/zones/asia-southeast2-a/instances/vm-ubuntu-dr", "capacity_gb": 20},
-                {"type": "Compute VM", "source_name": "vm-rocky", "target_name": "vm-rocky-dr", "backup_id": "93fbe84e-128a-4c22-b1e1-e9abdf89c56f", "location": "asia-southeast1", "vault_id": "bv-asia-southeast1", "gcp_resource_name": f"projects/{lab_project}/zones/asia-southeast1-c/instances/vm-rocky-dr", "capacity_gb": 10},
-                {"type": "Persistent Disk", "source_name": "vm-debian-data-disk", "target_name": "vm-debian-data-disk-dr", "backup_id": "11a09d3b-9c65-4f7f-82be-15e1e76b92f9", "location": "asia-southeast2", "vault_id": "bv-asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/zones/asia-southeast2-a/disks/vm-debian-data-disk-dr", "capacity_gb": 10},
-                {"type": "Persistent Disk", "source_name": "vm-rocky-data-disk", "target_name": "vm-rocky-data-disk-dr", "backup_id": "e9bd5ab6-23d9-5fca-4b1d-23d95fca876a", "location": "asia-southeast1", "vault_id": "bv-asia-southeast1", "gcp_resource_name": f"projects/{lab_project}/zones/asia-southeast1-c/disks/vm-rocky-data-disk-dr", "capacity_gb": 10},
-                {"type": "Cloud SQL", "source_name": "sql-pg", "target_name": "restored-sql-pg-dr", "backup_id": "1e1e760a-656b-797a-9f8d-76cb871615e1", "location": "asia-southeast1", "vault_id": "bv-asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/instances/restored-sql-pg-dr", "capacity_gb": 10},
-                {"type": "Cloud SQL", "source_name": "sql-mysql", "target_name": "restored-sql-mysql-dr", "backup_id": "571be5b4-656b-79e5-59d1-e1ced6bd571b", "location": "asia-southeast1", "vault_id": "bv-asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/instances/restored-sql-mysql-dr", "capacity_gb": 10},
-                {"type": "Filestore Share", "source_name": "fs-share", "target_name": "restored-fs-share-dr", "backup_id": "656b7f13-9f52-fef6-efd0-937f6c584b1d", "location": "asia-southeast2", "vault_id": "bv-asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/locations/asia-southeast2-a/instances/restored-fs-share-dr", "capacity_gb": 1024},
-                {"type": "AlloyDB Cluster", "source_name": "alloydb-cluster", "target_name": "restored-alloydb-cluster-dr", "backup_id": "fef6efd0-937f-6c58-4b1d-2afb98f5119e", "location": "asia-southeast1", "vault_id": "bv-asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/locations/asia-southeast1/clusters/restored-alloydb-cluster-dr", "capacity_gb": 10}
+                {"type": "Compute VM", "source_name": "vm-debian", "target_name": "vm-debian-dr", "backup_id": "91e58154-c58f-4dea-b28c-2afb98f5119e", "full_backup_id": "", "location": "asia-southeast2", "gcp_resource_name": f"projects/{dr_project}/zones/asia-southeast2-a/instances/vm-debian-dr", "capacity_gb": 20},
+                {"type": "Compute VM", "source_name": "vm-ubuntu", "target_name": "vm-ubuntu-dr", "backup_id": "2afb98f5-c58f-4dea-b28c-2afb98f5119e", "full_backup_id": "", "location": "asia-southeast2", "gcp_resource_name": f"projects/{dr_project}/zones/asia-southeast2-a/instances/vm-ubuntu-dr", "capacity_gb": 20},
+                {"type": "Compute VM", "source_name": "vm-rocky", "target_name": "vm-rocky-dr", "backup_id": "93fbe84e-128a-4c22-b1e1-e9abdf89c56f", "full_backup_id": "", "location": "asia-southeast1", "gcp_resource_name": f"projects/{lab_project}/zones/asia-southeast1-c/instances/vm-rocky-dr", "capacity_gb": 10},
+                {"type": "Persistent Disk", "source_name": "vm-debian-data-disk", "target_name": "vm-debian-data-disk-dr", "backup_id": "11a09d3b-9c65-4f7f-82be-15e1e76b92f9", "full_backup_id": "", "location": "asia-southeast2", "gcp_resource_name": f"projects/{dr_project}/zones/asia-southeast2-a/disks/vm-debian-data-disk-dr", "capacity_gb": 10},
+                {"type": "Persistent Disk", "source_name": "vm-rocky-data-disk", "target_name": "vm-rocky-data-disk-dr", "backup_id": "e9bd5ab6-23d9-5fca-4b1d-23d95fca876a", "full_backup_id": "", "location": "asia-southeast1", "gcp_resource_name": f"projects/{lab_project}/zones/asia-southeast1-c/disks/vm-rocky-data-disk-dr", "capacity_gb": 10},
+                {"type": "Cloud SQL", "source_name": "sql-pg", "target_name": "restored-sql-pg-dr", "backup_id": "1e1e760a-656b-797a-9f8d-76cb871615e1", "full_backup_id": "", "location": "asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/instances/restored-sql-pg-dr", "capacity_gb": 10},
+                {"type": "Cloud SQL", "source_name": "sql-mysql", "target_name": "restored-sql-mysql-dr", "backup_id": "571be5b4-656b-79e5-59d1-e1ced6bd571b", "full_backup_id": "", "location": "asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/instances/restored-sql-mysql-dr", "capacity_gb": 10},
+                {"type": "Filestore Share", "source_name": "fs-share", "target_name": "restored-fs-share-dr", "backup_id": "656b7f13-9f52-fef6-efd0-937f6c584b1d", "full_backup_id": "", "location": "asia-southeast2", "gcp_resource_name": f"projects/{dr_project}/locations/asia-southeast2-a/instances/restored-fs-share-dr", "capacity_gb": 1024},
+                {"type": "AlloyDB Cluster", "source_name": "alloydb-cluster", "target_name": "restored-alloydb-cluster-dr", "backup_id": "fef6efd0-937f-6c58-4b1d-2afb98f5119e", "full_backup_id": "", "location": "asia-southeast1", "gcp_resource_name": f"projects/{dr_project}/locations/asia-southeast1/clusters/restored-alloydb-cluster-dr", "capacity_gb": 10}
             ]
             
         print("Querying Backup & DR operations log...")
-        op_output = "[]"
-        try:
-            op_args = [
-                "gcloud", "backup-dr", "operations", "list",
-                "--project", gcbdr_project,
-                "--location", "asia-southeast1",
-                "--format", "json"
-            ]
-            op_output = run_command(op_args)
-        except Exception as e:
-            print(f"Warning: Could not list Backup-DR operations: {str(e)}. Using fallback timing calculations.")
-            
-        operations = json.loads(op_output)
+        operations = []
+        for proj in [gcbdr_project, lab_project]:
+            try:
+                op_args = [
+                    "gcloud", "backup-dr", "operations", "list",
+                    "--project", proj,
+                    "--location", "asia-southeast1",
+                    "--format", "json"
+                ]
+                op_output = run_command(op_args)
+                operations.extend(json.loads(op_output))
+            except Exception as e:
+                print(f"Warning: Could not list Backup-DR operations in {proj}: {str(e)}")
+        
         
         results = []
         for r in discovered_resources:
@@ -256,15 +309,16 @@ def main():
             source_name = r["source_name"]
             capacity_gb = r["capacity_gb"]
             gcp_resname = r["gcp_resource_name"]
+            full_backup_id = r["full_backup_id"]
             
-            # Default lookup parameters
             restore_duration = None
+            restore_start = None
             boot_duration = None
             boot_desc = "N/A (Managed Service)"
             
             # 1. Look up GCBDR Operation
             if gcp_resname and operations:
-                restore_duration = get_latest_restore_operation(operations, gcp_resname)
+                restore_duration, restore_start = get_latest_restore_operation(operations, gcp_resname)
                 
             # Baseline fallbacks
             if restore_duration is None:
@@ -279,11 +333,21 @@ def main():
                 else: # AlloyDB
                     restore_duration = 320
                     
+            # Compute start offset relative to entire apply execution start
+            start_offset = 0
+            if restore_start:
+                start_offset = max(0, int((restore_start - apply_start_dt).total_seconds()))
+            else:
+                # Approximate fallback offsets if operations list query fails
+                if r_type == "Cloud SQL" or r_type == "Filestore Share":
+                    start_offset = 39 # AlloyDB restore duration
+                elif r_type == "Compute VM" or r_type == "Persistent Disk":
+                    start_offset = 39 + 180 # AlloyDB + Filestore duration
+                    
             # 2. Look up GCE Boot Telemetry (VMs Only)
             if r_type == "Compute VM":
                 boot_duration, boot_desc = (93.6, "1min 33.674s") if "rocky" not in source_name else (42.0, "42s")
                 
-                # Active check if GCE instance is online
                 try:
                     active_zone = "asia-southeast1-c" if "rocky" in source_name else "asia-southeast2-a"
                     active_project = lab_project if "rocky" in source_name else dr_project
@@ -311,7 +375,11 @@ def main():
                 except Exception:
                     pass
             
-            total_rto = int(restore_duration + (boot_duration or 0))
+            # Retrieve Backup Creation Time from GCP API (for compliance)
+            backup_time_desc = get_backup_consistency_time(full_backup_id)
+            
+            # timeline end is the total seconds since apply start when this resource finishes booting
+            timeline_end = start_offset + restore_duration + (boot_duration or 0)
             
             # Speed formatting
             mb_per_sec = (capacity_gb * 1024) / restore_duration
@@ -323,19 +391,22 @@ def main():
                 "source_name": source_name,
                 "type": r_type,
                 "backup_id": r["backup_id"],
+                "backup_time": backup_time_desc,
                 "restore_duration": restore_duration,
+                "start_offset": start_offset,
+                "timeline_end": timeline_end,
                 "speed_desc": speed_desc,
                 "boot_desc": boot_desc,
                 "boot_duration": boot_duration,
-                "total_rto": total_rto
+                "total_rto": restore_duration + (boot_duration or 0)
             })
             
         avg_restore = int(sum(r["restore_duration"] for r in results) / len(results))
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         timestamp_slug = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Calculate maximum RTO to scale the Gantt chart
-        max_rto = max(r["total_rto"] for r in results) if results else 1
+        # Calculate maximum Gantt timeline time to scale the percentages
+        max_gantt_time = max(r["timeline_end"] for r in results) if results else 1
         
         table_rows = ""
         gantt_rows = ""
@@ -344,19 +415,24 @@ def main():
         results.sort(key=lambda x: (x["type"], x["target_name"]))
         
         for r in results:
+            # Display backup timestamp details in table
+            backup_meta_html = f'<br/><span style="font-size: 0.75rem; color: var(--accent-success); font-weight: 500;">Consistency: {r["backup_time"]}</span>' if r["backup_time"] != "N/A" else ""
             table_rows += f"""
                         <tr>
                             <td><strong>{r["target_name"]}</strong><br/><span style="font-size: 0.75rem; color: var(--text-secondary);">{r["type"]}</span></td>
                             <td>{r["source_name"]}</td>
-                            <td><strong>ID:</strong> <span class="image-id">{r["backup_id"]}</span></td>
+                            <td><strong>ID:</strong> <span class="image-id">{r["backup_id"]}</span>{backup_meta_html}</td>
                             <td>{r["restore_duration"]} seconds<br/><span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">{r["speed_desc"]}</span></td>
                             <td>{r["boot_desc"]}</td>
                             <td><strong>{format_duration(r["total_rto"])}</strong></td>
                         </tr>"""
                         
-            # Gantt row percentages
-            restore_pct = (r["restore_duration"] / max_rto) * 100
-            boot_pct = ((r["boot_duration"] or 0) / max_rto) * 100
+            # Gantt row percentages using timeline offsets
+            offset_pct = (r["start_offset"] / max_gantt_time) * 100
+            restore_pct = (r["restore_duration"] / max_gantt_time) * 100
+            boot_pct = ((r["boot_duration"] or 0) / max_gantt_time) * 100
+            
+            spacer_html = f'<div class="gantt-spacer" style="width: {offset_pct}%;"></div>' if offset_pct > 0 else ""
             
             gantt_rows += f"""
             <div class="gantt-row">
@@ -365,6 +441,7 @@ def main():
                     <span style="font-size: 0.7rem; color: var(--text-secondary); display: block;">{r["type"]}</span>
                 </div>
                 <div class="gantt-track">
+                    {spacer_html}
                     <div class="gantt-bar restore-bar" style="width: {restore_pct}%;">
                         <span class="gantt-time-tag">{r["restore_duration"]}s</span>
                     </div>
@@ -598,6 +675,11 @@ def main():
             display: flex;
             overflow: hidden;
             border: 1px solid rgba(55, 65, 81, 0.5);
+        }
+
+        .gantt-spacer {
+            height: 100%;
+            background-color: transparent;
         }
 
         .gantt-bar {
@@ -985,7 +1067,7 @@ def main():
         </section>
 
         <footer>
-            <div>DR Drill Verification Report • Confidential Compliance Document</div>
+            <div>DR Drill Verification Report • Compliance Document</div>
             <ul class="meta-list">
                 <li><strong>Drill Date:</strong> $drill_date</li>
                 <li><strong>Target Provider:</strong> Google Cloud Backup & DR</li>
