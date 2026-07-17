@@ -50,8 +50,7 @@ resource "google_sql_database_instance" "restored_sql_pg" {
 
   depends_on = [
     time_sleep.wait_for_apis,
-    google_service_networking_connection.dr_private_vpc_connection,
-    terraform_data.phase_1_complete
+    google_service_networking_connection.dr_private_vpc_connection
   ]
 }
 
@@ -104,7 +103,6 @@ resource "google_sql_database_instance" "restored_sql_mysql" {
 
   depends_on = [
     time_sleep.wait_for_apis,
-    google_service_networking_connection.dr_private_vpc_connection,
-    terraform_data.phase_1_complete
+    google_service_networking_connection.dr_private_vpc_connection
   ]
 }
