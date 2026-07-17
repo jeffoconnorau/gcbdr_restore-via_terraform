@@ -126,6 +126,25 @@ def get_gcp_resource_create_time(resource_type, resource_name, project_id, locat
         print(f"Warning: Could not fetch creation time for {resource_type} {resource_name}: {str(e)}")
     return None
 
+def parse_terraform_durations_from_log(log_path):
+    durations = {}
+    if not os.path.exists(log_path):
+        return durations
+    pattern = r"([a-zA-Z0-9_\.]+)(\[[0-9a-zA-Z_\-\"]+\])?: Creation complete after (?:(\d+)m)?(\d+)s"
+    try:
+        with open(log_path, "r") as f:
+            for line in f:
+                match = re.search(pattern, line)
+                if match:
+                    res_address = match.group(1)
+                    index = match.group(2) or ""
+                    minutes = int(match.group(3)) if match.group(3) else 0
+                    seconds = int(match.group(4))
+                    total_seconds = minutes * 60 + seconds
+                    durations[res_address + index] = total_seconds
+    except Exception as e:
+        print(f"Warning: Could not parse terraform apply log {log_path}: {str(e)}")
+    return durations
 
 def parse_tfstate(state_path):
     if not os.path.exists(state_path):
@@ -272,8 +291,15 @@ def main():
             
         apply_start = float(sys.argv[1])
         apply_end = float(sys.argv[2]) if len(sys.argv) > 2 else datetime.now().timestamp()
-        total_apply_duration = int(apply_end - apply_start)
+        apply_log = sys.argv[3] if len(sys.argv) > 3 else None
         
+        # Parse apply log durations
+        log_durations = {}
+        if apply_log:
+            log_durations = parse_terraform_durations_from_log(apply_log)
+            print(f"[INFO] Parsed {len(log_durations)} resource durations from {apply_log}")
+            
+        total_apply_duration = int(apply_end - apply_start)
         apply_start_dt = datetime.fromtimestamp(apply_start, timezone.utc)
         
         lab_project = "argo-svc-dev-3"
@@ -349,7 +375,31 @@ def main():
             elif gcp_resname and operations:
                 restore_duration, restore_start = get_latest_restore_operation(operations, gcp_resname)
                 
-            # Baseline fallbacks
+            # Search duration from parsed terraform logs if available
+            log_key = None
+            if r_type == "Cloud SQL":
+                log_key = "google_sql_database_instance.restored_sql_pg[0]" if "pg" in source_name else "google_sql_database_instance.restored_sql_mysql[0]"
+            elif r_type == "Filestore Share":
+                log_key = "google_filestore_instance.restored_fs_share[0]"
+            elif r_type == "AlloyDB Cluster":
+                cluster_dur = log_durations.get("terraform_data.restored_alloydb_cluster[0]", 39)
+                instance_dur = log_durations.get("google_alloydb_instance.restored_alloydb_instance[0]", 320)
+                restore_duration = cluster_dur + instance_dur
+            elif r_type == "Compute VM":
+                if "rocky" in source_name:
+                    log_key = "google_backup_dr_restore_workload.restore_vm_rocky[0]"
+                else:
+                    log_key = f'google_backup_dr_restore_workload.restore_vms["{source_name}"]'
+            elif r_type == "Persistent Disk":
+                if "rocky" in source_name:
+                    log_key = "google_backup_dr_restore_workload.restore_rocky_disk[0]"
+                else:
+                    log_key = "google_backup_dr_restore_workload.restore_disk[0]"
+                    
+            if log_key and log_key in log_durations:
+                restore_duration = log_durations[log_key]
+                
+            # Baseline fallbacks if not found in log
             if restore_duration is None:
                 if r_type == "Compute VM":
                     restore_duration = 45 if "rocky" in source_name else 35
