@@ -108,6 +108,25 @@ def find_alloydb_backup_id(state_path):
         pass
     return ""
 
+def get_gcp_resource_create_time(resource_type, resource_name, project_id, location=None):
+    try:
+        if resource_type == "Cloud SQL":
+            args = ["gcloud", "sql", "instances", "describe", resource_name, f"--project={project_id}", "--format=value(createTime)"]
+        elif resource_type == "Filestore Share":
+            args = ["gcloud", "filestore", "instances", "describe", resource_name, f"--project={project_id}", f"--location={location}", "--format=value(createTime)"]
+        elif resource_type == "AlloyDB Cluster":
+            args = ["gcloud", "alloydb", "clusters", "describe", resource_name, f"--project={project_id}", f"--region={location}", "--format=value(createTime)"]
+        else:
+            return None
+            
+        output = run_command(args).strip()
+        if output:
+            return parse_rfc3339(output)
+    except Exception as e:
+        print(f"Warning: Could not fetch creation time for {resource_type} {resource_name}: {str(e)}")
+    return None
+
+
 def parse_tfstate(state_path):
     if not os.path.exists(state_path):
         return []
@@ -316,8 +335,18 @@ def main():
             boot_duration = None
             boot_desc = "N/A (Managed Service)"
             
-            # 1. Look up GCBDR Operation
-            if gcp_resname and operations:
+            # 1. Look up GCBDR Operation / GCP Create Time
+            if r_type in ["Cloud SQL", "Filestore Share", "AlloyDB Cluster"]:
+                loc_arg = r["location"]
+                if r_type == "Filestore Share":
+                    loc_arg = r["location"] + "-a"
+                tgt_name = target_name
+                if r_type == "AlloyDB Cluster":
+                    tgt_name = "restored-alloydb-cluster-dr"
+                create_dt = get_gcp_resource_create_time(r_type, tgt_name, dr_project, loc_arg)
+                if create_dt:
+                    restore_start = create_dt
+            elif gcp_resname and operations:
                 restore_duration, restore_start = get_latest_restore_operation(operations, gcp_resname)
                 
             # Baseline fallbacks
