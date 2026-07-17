@@ -184,9 +184,7 @@ resource "google_backup_dr_restore_workload" "restore_disk" {
     type    = "projects/${var.dr_project_id}/zones/${var.dr_region}-a/diskTypes/${var.disk_type}"
   }
 
-  depends_on = [
-    terraform_data.phase_2_gate
-  ]
+  # No dependencies needed for parallel disk restore
 }
 
 # 6. Attach Restored Disk to Restored VM
@@ -345,8 +343,7 @@ resource "google_backup_dr_restore_workload" "restore_rocky_disk" {
   }
 
   depends_on = [
-    time_sleep.wait_for_kms_iam_infra,
-    terraform_data.phase_2_gate
+    time_sleep.wait_for_kms_iam_infra
   ]
 }
 
