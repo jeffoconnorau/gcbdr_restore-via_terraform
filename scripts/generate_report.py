@@ -143,7 +143,7 @@ def parse_tfstate(state_path):
                 vault_id = attrs.get("backup_vault_id", "")
                 ds_id = attrs.get("data_source_id", "")
                 loc = attrs.get("location", "asia-southeast1")
-                proj = "argo-svc-infra-prod" if "rocky" in source_name else "argo-svc-dev-3"
+                proj = "argo-svc-gcbdr" if "rocky" in source_name else "argo-svc-dev-3"
                 
                 full_backup_id = f"projects/{proj}/locations/{loc}/backupVaults/{vault_id}/dataSources/{ds_id}/backups/{backup_id}" if (backup_id and vault_id and ds_id) else "N/A"
                 
@@ -168,7 +168,7 @@ def parse_tfstate(state_path):
                 vault_id = attrs.get("backup_vault_id", "")
                 ds_id = attrs.get("data_source_id", "")
                 loc = attrs.get("location", "asia-southeast1")
-                proj = "argo-svc-infra-prod" if "rocky" in source_name else "argo-svc-dev-3"
+                proj = "argo-svc-gcbdr" if "rocky" in source_name else "argo-svc-dev-3"
                 
                 full_backup_id = f"projects/{proj}/locations/{loc}/backupVaults/{vault_id}/dataSources/{ds_id}/backups/{backup_id}" if (backup_id and vault_id and ds_id) else "N/A"
                 
