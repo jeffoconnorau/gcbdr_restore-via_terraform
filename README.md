@@ -103,20 +103,29 @@ Once the baseline infrastructure is deployed, **the initial backups have success
 ./run_restore.sh
 ```
 
-#### Optimizing Restore Concurrency
-By default, the Terraform CLI executes up to **10 operations concurrently**. Because GCBDR restore plans involve wait timers, IAM propagation checks, and database creations, standard execution can result in queued resource states.
+#### Optimizing Restore Concurrency (Concurrent vs. Sequential Restore)
+By default, this project supports two recovery execution modes:
 
-To run restores in parallel and kickstart all jobs concurrently (especially useful for mass restoration tasks), increase the CLI concurrency limit using the `-parallelism` flag:
+1. **Concurrent Restore (Parallel Mode - Default)**: Decouples all resource dependencies so that all VM, disk, database, and Filestore restores start provisioning simultaneously at T-0. This provides the fastest possible recovery path for rapid testing.
+2. **Sequential Phase-Based Restore**: Enforces dependency gates between workloads (e.g. AlloyDB completes -> Cloud SQL/Filestore completes -> VMs restore and mount).
+
+##### How to Toggle Concurrency Modes
+Because the Terraform Directed Acyclic Graph (DAG) is constructed statically during planning, we cannot toggle DAG execution paths dynamically using variable logic. To switch modes, we use the provided toggle script to modify HCL comments on disk prior to running the apply:
 
 ```bash
-terraform apply \
-  -var="perform_dr_test=true" \
-  -var="provision_cloud_sql=true" \
-  -var="create_isolated_dr_vpc=true" \
-  -var="restore_suffix=-dr" \
-  -parallelism=30
+# Switch HCL to Concurrent Restore (Parallel Mode)
+python3 scripts/toggle_dependencies.py parallel
+
+# Switch HCL to Sequential Phase-Based Restore
+python3 scripts/toggle_dependencies.py sequential
 ```
-*Note: Because `-parallelism` is an execution engine flag for the Terraform CLI, it cannot be defined inside `variables.tf` or `terraform.tfvars` and must be passed as a command-line argument.*
+
+Once the mode is selected, run the recovery:
+```bash
+./run_restore.sh
+```
+
+*Note: The restore script automatically increases CLI parallelism (`-parallelism=30`) to prevent Terraform API call queuing.*
 
 ## Automated DR Drill Verification Dashboard
 
