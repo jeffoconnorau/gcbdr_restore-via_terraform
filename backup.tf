@@ -67,8 +67,13 @@ resource "google_backup_dr_backup_plan" "bp_vms" {
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "HOURLY"
-      time_zone       = "UTC"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
+      backup_window {
+        start_hour_of_day = 0
+        end_hour_of_day   = 24
+      }
     }
   }
 }
@@ -93,8 +98,13 @@ resource "google_backup_dr_backup_plan" "bp_rocky_cmek" {
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "HOURLY"
-      time_zone       = "UTC"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
+      backup_window {
+        start_hour_of_day = 0
+        end_hour_of_day   = 24
+      }
     }
   }
 }
@@ -115,8 +125,13 @@ resource "google_backup_dr_backup_plan" "bp_rocky_disk_cmek" {
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "HOURLY"
-      time_zone       = "UTC"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
+      backup_window {
+        start_hour_of_day = 0
+        end_hour_of_day   = 24
+      }
     }
   }
 }
@@ -141,8 +156,13 @@ resource "google_backup_dr_backup_plan" "bp_sql" {
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "HOURLY"
-      time_zone       = "UTC"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
+      backup_window {
+        start_hour_of_day = 0
+        end_hour_of_day   = 24
+      }
     }
   }
 }
@@ -277,8 +297,13 @@ resource "google_backup_dr_backup_plan" "bp_disk" {
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "HOURLY"
-      time_zone       = "UTC"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
+      backup_window {
+        start_hour_of_day = 0
+        end_hour_of_day   = 24
+      }
     }
   }
 }
@@ -321,8 +346,13 @@ resource "google_backup_dr_backup_plan" "bp_filestore" {
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "HOURLY"
-      time_zone       = "UTC"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
+      backup_window {
+        start_hour_of_day = 0
+        end_hour_of_day   = 24
+      }
     }
   }
 }
@@ -362,8 +392,13 @@ resource "google_backup_dr_backup_plan" "bp_alloydb" {
     backup_retention_days = 3
 
     standard_schedule {
-      recurrence_type = "HOURLY"
-      time_zone       = "UTC"
+      recurrence_type  = "HOURLY"
+      hourly_frequency = 1
+      time_zone        = "UTC"
+      backup_window {
+        start_hour_of_day = 0
+        end_hour_of_day   = 24
+      }
     }
   }
 }
