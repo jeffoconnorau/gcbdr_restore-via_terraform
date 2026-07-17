@@ -36,7 +36,8 @@ resource "google_sql_database_instance" "restored_sql_pg" {
     availability_type = "ZONAL"            # Disable HA for Cost Savings/Test
 
     user_labels = {
-      dr = "test"
+      dr              = "test"
+      dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
     }
 
     ip_configuration {
@@ -89,7 +90,8 @@ resource "google_sql_database_instance" "restored_sql_mysql" {
     availability_type = "ZONAL"            # Disable HA for Cost Savings/Test
 
     user_labels = {
-      dr = "test"
+      dr              = "test"
+      dependency_gate = var.enforce_dr_dependencies ? terraform_data.phase_1_complete[0].id : "none"
     }
 
     ip_configuration {

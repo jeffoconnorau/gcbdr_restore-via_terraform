@@ -65,6 +65,11 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
       value = "test"
     }
 
+    labels {
+      key   = "dependency_gate"
+      value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
+    }
+
     # Target Network Interface (defines Target Project via subnetwork)
     advanced_machine_features {
       enable_uefi_networking = false
@@ -85,8 +90,7 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
   depends_on = [
     google_project_iam_member.vault_sa_target_permissions,
     google_project_iam_member.vault_sa_host_network_permissions,
-    time_sleep.wait_for_policy,
-    terraform_data.phase_2_gate
+    time_sleep.wait_for_policy
   ]
 }
 
@@ -253,6 +257,11 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
       value = "test"
     }
 
+    labels {
+      key   = "dependency_gate"
+      value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
+    }
+
     advanced_machine_features {
       enable_uefi_networking = false
     }
@@ -272,8 +281,7 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
 
   depends_on = [
     google_project_iam_member.vault_sa_infra_prod_permissions,
-    time_sleep.wait_for_policy,
-    terraform_data.phase_2_gate
+    time_sleep.wait_for_policy
   ]
 }
 
