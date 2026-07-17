@@ -57,3 +57,7 @@ key.json
 # Discovery logs
 debug_discovery.log
 *.log
+
+# DR Reports
+dr_report_*.html
+dr_test_report.html
