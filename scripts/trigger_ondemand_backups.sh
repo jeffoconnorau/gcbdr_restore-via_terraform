@@ -48,10 +48,13 @@ echo "Triggering on-demand backups in region $REGION for: ${PROJECTS[*]}"
 [[ $DRY_RUN -eq 1 ]] && echo "(dry run)"
 
 total=0
+ok=0
+failed=0
+skipped=0
 for PROJECT in "${PROJECTS[@]}"; do
   BPAS=$(gcloud backup-dr backup-plan-associations list --project="$PROJECT" --location="$REGION" --format=json 2>/dev/null || echo '[]')
   # Unit separator (non-whitespace) so empty fields are not collapsed by read
-  while IFS=$'\x1f' read -r NAME RESOURCE RULE PLAN; do
+  while IFS=$'\x1f' read -r NAME RESOURCE RULE PLAN STATE; do
     [[ -z "$NAME" ]] && continue
     [[ -n "$MATCH" && "$RESOURCE" != *"$MATCH"* && "$NAME" != *"$MATCH"* ]] && continue
 
@@ -67,14 +70,29 @@ for PROJECT in "${PROJECTS[@]}"; do
       ARGS+=(--backup-rule-id="$RULE")
     fi
 
+    # INACTIVE = source resource deleted (e.g. leftover policy-managed BPA from a previous build)
+    if [[ -n "$STATE" && "$STATE" != "ACTIVE" ]]; then
+      printf '  %-60s [SKIP] state=%s\n' "${NAME##*/}" "$STATE"
+      skipped=$((skipped + 1))
+      continue
+    fi
+
     printf '  %-60s rule=%-16s %s\n' "${NAME##*/}" "${RULE:-n/a}" "${RESOURCE##*/}"
     total=$((total + 1))
     if [[ $DRY_RUN -eq 0 ]]; then
-      gcloud backup-dr backup-plan-associations trigger-backup "${ARGS[@]}" --async --quiet >/dev/null \
-        || echo "    [WARN] trigger failed for ${NAME##*/}"
+      if gcloud backup-dr backup-plan-associations trigger-backup "${ARGS[@]}" --async --quiet >/dev/null; then
+        ok=$((ok + 1))
+      else
+        echo "    [WARN] trigger failed for ${NAME##*/}"
+        failed=$((failed + 1))
+      fi
     fi
-  done < <(jq -r '.[] | [.name, (.resource // ""), (.rulesConfigInfo[0].ruleId // ""), (.backupPlan // "")] | join("\u001f")' <<<"$BPAS")
+  done < <(jq -r '.[] | [.name, (.resource // ""), (.rulesConfigInfo[0].ruleId // ""), (.backupPlan // ""), (.state // "")] | join("\u001f")' <<<"$BPAS")
 done
 
-echo "Done: $total backup(s) $( [[ $DRY_RUN -eq 1 ]] && echo 'would be' ) triggered."
+if [[ $DRY_RUN -eq 1 ]]; then
+  echo "Done: $total backup(s) would be triggered, $skipped skipped (not ACTIVE)."
+else
+  echo "Done: $ok triggered, $failed failed, $skipped skipped (not ACTIVE)."
+fi
 echo "Monitor: Backup and DR > Jobs in the console, or 'gcloud backup-dr operations list --project=<workload-project> --location=$REGION' (operations are created in the BPA's project)"
