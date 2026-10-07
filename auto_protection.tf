@@ -22,6 +22,10 @@
 locals {
   ap_enabled = var.enable_auto_protection
 
+  # Appended to policy + plan IDs so a rebuilt lab does not wait on (or collide
+  # with) policies/plans from a previous run that are still unwinding.
+  ap_suffix = var.auto_protection_name_suffix
+
   ap_scope_projects = length(var.auto_protection_scope_projects) > 0 ? var.auto_protection_scope_projects : [var.project_id]
 
   # Scopes outside the vault project need the vault service agent to hold
@@ -37,12 +41,12 @@ locals {
   # One policy per resource type (API: "Only one BackupPlanDetail is allowed").
   ap_policies = local.ap_enabled ? {
     vms = {
-      policy_id     = "${var.auto_protection_policy_id}-vms"
+      policy_id     = "${var.auto_protection_policy_id}-vms${local.ap_suffix}"
       resource_type = "compute.googleapis.com/Instance"
       plan          = google_backup_dr_backup_plan.bp_autoprotect_vms[0].id
     }
     disks = {
-      policy_id     = "${var.auto_protection_policy_id}-disks"
+      policy_id     = "${var.auto_protection_policy_id}-disks${local.ap_suffix}"
       resource_type = "compute.googleapis.com/Disk"
       plan          = google_backup_dr_backup_plan.bp_autoprotect_disks[0].id
     }
@@ -63,7 +67,7 @@ resource "google_backup_dr_backup_plan" "bp_autoprotect_vms" {
   provider       = google
   project        = local.vault_project
   location       = var.region
-  backup_plan_id = "bp-autoprotect-vms"
+  backup_plan_id = "bp-autoprotect-vms${local.ap_suffix}"
   description    = "Assigned automatically by auto-protection policy ${var.auto_protection_policy_id} (${var.auto_protection_label_key}=${var.auto_protection_label_value})."
   resource_type  = "compute.googleapis.com/Instance"
   backup_vault   = google_backup_dr_backup_vault.vault.id
@@ -98,7 +102,7 @@ resource "google_backup_dr_backup_plan" "bp_autoprotect_disks" {
   provider       = google
   project        = local.vault_project
   location       = var.region
-  backup_plan_id = "bp-autoprotect-disks"
+  backup_plan_id = "bp-autoprotect-disks${local.ap_suffix}"
   description    = "Assigned automatically by auto-protection policy ${var.auto_protection_policy_id} (${var.auto_protection_label_key}=${var.auto_protection_label_value})."
   resource_type  = "compute.googleapis.com/Disk"
   backup_vault   = google_backup_dr_backup_vault.vault.id

@@ -337,6 +337,8 @@ terraform import google_backup_dr_backup_vault.vault 'projects/<vault_project>/l
 terraform import 'google_backup_dr_backup_vault.vault_xr[0]' 'projects/<vault_project>/locations/<dr_region>/backupVaults/bv-xr-<dr_region>-<suffix>'
 # The CMEK vault is pinned to the OLD (destroyed) KMS key - give the new one a fresh name
 echo 'cmek_vault_suffix = "r2"' >> terraform.tfvars
+# Old auto-protection bindings can sit in DELETION_INITIATED for hours: use new policy/plan IDs
+echo 'auto_protection_name_suffix = "-r2"' >> terraform.tfvars
 terraform apply -var=perform_dr_test=false
 ```
 

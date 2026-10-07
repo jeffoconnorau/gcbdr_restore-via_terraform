@@ -363,3 +363,14 @@ variable "cmek_vault_suffix" {
     error_message = "cmek_vault_suffix must be 0-12 chars of [a-z0-9-]."
   }
 }
+
+variable "auto_protection_name_suffix" {
+  description = "Optional suffix (e.g. \"-r2\") appended to auto-protection policy and bp-autoprotect-* plan IDs. Use when rebuilding the lab while the previous run's bindings are still DELETION_INITIATED (the unbind can take hours)."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = can(regex("^(-[a-z0-9]{1,8})?$", var.auto_protection_name_suffix))
+    error_message = "auto_protection_name_suffix must be empty or '-' followed by 1-8 chars of [a-z0-9]."
+  }
+}
