@@ -330,6 +330,16 @@ done < vaults_to_delete.txt
 
 Notes: key rings cannot be deleted in Cloud KMS (Terraform only forgets them; key versions are scheduled for destruction). APIs stay enabled (`disable_on_destroy = false`). Delete the vaults before **1 Nov 2026** or the vault project will also carry a Backup and DR lien (see caveat 6).
 
+**Rebuilding before the old vaults are deleted** (`random_id.vault_suffix` survives the destroy, so the same vault names are planned again → `409 already exists`):
+```bash
+# Re-adopt the non-CMEK vaults (same config, no replacement)
+terraform import google_backup_dr_backup_vault.vault 'projects/<vault_project>/locations/<region>/backupVaults/bv-<region>-<suffix>'
+terraform import 'google_backup_dr_backup_vault.vault_xr[0]' 'projects/<vault_project>/locations/<dr_region>/backupVaults/bv-xr-<dr_region>-<suffix>'
+# The CMEK vault is pinned to the OLD (destroyed) KMS key - give the new one a fresh name
+echo 'cmek_vault_suffix = "r2"' >> terraform.tfvars
+terraform apply -var=perform_dr_test=false
+```
+
 > [!WARNING]
 > **Full Destroy Caveats**: If you run `terraform destroy` on the entire project, you may encounter errors:
 > 1.  **Backup Vaults & KMS Keys**: These resources are soft-deleted by Google Cloud and cannot be fully purged immediately. To ensure you can repeatedly run `terraform apply` and `terraform destroy` without hitting "AlreadyExists" collisions, this codebase dynamically appends a 4-byte `random_id` suffix to your Vaults and KMS Key Rings.

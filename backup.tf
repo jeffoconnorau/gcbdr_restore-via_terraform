@@ -25,7 +25,7 @@ resource "google_backup_dr_backup_vault" "vault_cmek" {
   provider                                   = google.gcbdr
   project                                    = var.gcbdr_project_id
   location                                   = var.region
-  backup_vault_id                            = "bv-cmek-${var.region}-remote-${random_id.vault_suffix.hex}"
+  backup_vault_id                            = "bv-cmek-${var.region}-remote-${var.cmek_vault_suffix != "" ? var.cmek_vault_suffix : random_id.vault_suffix.hex}"
   backup_minimum_enforced_retention_duration = "86400s" # 1 day
   access_restriction                         = var.vault_access_restriction
 

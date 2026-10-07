@@ -352,3 +352,14 @@ variable "enable_project_services" {
   type        = bool
   default     = true
 }
+
+variable "cmek_vault_suffix" {
+  description = "Optional suffix for the CMEK vault name (default: random vault suffix). Set a new value when rebuilding the lab after a destroy: the KMS key is new, but the old CMEK vault still holds enforced-retention backups and cannot be deleted or re-keyed."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = can(regex("^[a-z0-9-]{0,12}$", var.cmek_vault_suffix))
+    error_message = "cmek_vault_suffix must be 0-12 chars of [a-z0-9-]."
+  }
+}
