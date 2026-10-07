@@ -383,3 +383,47 @@ resource "google_compute_attached_disk" "attach_restored_rocky_disk" {
 }
 
 # Cleaned up all legacy null_resource cleanups to avoid resource conflict 409 errors
+
+# ------------------------------------------------------------------------------
+# Auto-delete for data disks restored WITH an instance
+# ------------------------------------------------------------------------------
+# An instance restore recreates every disk that was attached to the source VM
+# (e.g. vm-debian-dr-1), but only the boot disk honours `disks { auto_delete }`.
+# Without this step, destroying the restore deletes the VM and orphans its data
+# disks in the target project. Only disks named "<restored-vm>-<n>" are touched,
+# so separately restored disks (e.g. vm-debian-data-disk-dr) keep their own lifecycle.
+locals {
+  restored_instance_ids = merge(
+    { for k, r in google_backup_dr_restore_workload.restore_vms : k => r.id },
+    { for r in google_backup_dr_restore_workload.restore_vm_rocky : "vm-rocky" => r.id },
+    { for r in google_backup_dr_restore_workload.restore_vm_xr : "vm-xr" => r.id },
+  )
+}
+
+resource "terraform_data" "restored_vm_disk_autodelete" {
+  for_each = local.restored_instance_ids
+
+  input = {
+    project  = regex("projects/([^/]+)/", each.value)[0]
+    zone     = regex("zones/([^/]+)/", each.value)[0]
+    instance = regex("instances/([^/]+)$", each.value)[0]
+  }
+
+  triggers_replace = [each.value]
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      set -uo pipefail
+      P="${self.output.project}" Z="${self.output.zone}" VM="${self.output.instance}"
+      DISKS=$(gcloud compute instances describe "$VM" --project="$P" --zone="$Z" --format=json 2>/dev/null \
+        | jq -r --arg vm "$VM" '.disks[]? | select(.boot | not) | select(.source | test("/disks/" + $vm + "-[0-9]+$")) | .deviceName') \
+        || { echo "[WARN] Could not inspect $VM - data disks may need manual cleanup."; exit 0; }
+      for d in $DISKS; do
+        echo "[INFO] $VM: setting auto-delete on restored data disk (device $d)"
+        gcloud compute instances set-disk-auto-delete "$VM" --project="$P" --zone="$Z" --device-name="$d" --auto-delete --quiet \
+          || echo "[WARN] Failed to set auto-delete on $VM/$d"
+      done
+    EOT
+  }
+}

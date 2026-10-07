@@ -304,6 +304,10 @@ Re-apply with restores disabled (`terraform.tfvars` normally already has `perfor
 terraform apply -var="perform_dr_test=false"
 ```
 
+> [!NOTE]
+> An **instance** restore recreates every disk that was attached to the source VM (e.g. `vm-debian-dr-1`), but the API only applies `auto_delete` to the boot disk. `terraform_data.restored_vm_disk_autodelete` therefore marks those `<restored-vm>-<n>` data disks auto-delete right after each restore, so removing the restore no longer orphans them. Disks restored on their own (`vm-*-data-disk-dr`) are separate resources and are deleted by their own `restore_disk` / `restore_rocky_disk` entries. Check for strays with:
+> `gcloud compute disks list --project=<dr_project_id> --filter="-users:*"`
+
 ### Destroy the Entire Lab
 Backup vaults holding backups inside their enforced-retention window cannot be deleted, so take them out of Terraform first, destroy everything else, and delete the vaults once their backups have expired.
 

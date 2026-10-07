@@ -118,6 +118,10 @@ run "dr_plan" {
     condition     = google_backup_dr_restore_workload.restore_vm_xr[0].location == "asia-southeast2"
     error_message = "xr restore reads from secondary-region vault"
   }
+  assert {
+    condition     = toset(keys(terraform_data.restored_vm_disk_autodelete)) == toset(["vm-debian", "vm-ubuntu", "vm-ap-1", "vm-ap-2", "vm-rocky", "vm-xr"])
+    error_message = "every restored instance gets data-disk auto-delete"
+  }
 }
 
 # 4-project centralised layout: backup project, KMS project, Terraform-built Shared VPC.
