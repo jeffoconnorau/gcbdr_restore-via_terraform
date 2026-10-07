@@ -63,3 +63,6 @@ dr_report_*.html
 dr_test_report.html
 __pycache__/
 *.tfplan
+
+# Local teardown helper (contains project IDs)
+vaults_to_delete.txt

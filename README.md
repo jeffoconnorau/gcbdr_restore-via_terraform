@@ -281,6 +281,16 @@ The `./run_restore.sh` wrapper script captures the exact T-0 start epoch of the 
 - **Audit History**: A timestamped backup is saved as `dr_report_YYYYMMDD_HHMMSS.html` to preserve historic compliance logs for security auditors.
 - **Git Safety**: Generated HTML reports are automatically excluded from version control in `.gitignore`.
 
+### 3. Sample RTO report
+A redacted report from the 2026-10-07 validation run (4-project layout, 8 workloads restored, asia-southeast1 → asia-southeast2) is in [docs/sample_rto_report.html](docs/sample_rto_report.html) (download and open it in a browser; GitHub shows HTML as source).
+
+[![Sample DR drill / RTO report](docs/sample_rto_report.png)](docs/sample_rto_report.html)
+
+Project IDs, project numbers, vault/key suffixes and backup image IDs are replaced with placeholders. Timings are unchanged. To share your own report:
+```bash
+./scripts/redact_report.py dr_test_report.html my_sample_report.html   # project roles read from terraform.tfvars
+```
+
 ## Cleanup
 
 ### Destroy Restored Workloads Only

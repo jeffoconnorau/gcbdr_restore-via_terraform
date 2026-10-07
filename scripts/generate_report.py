@@ -1018,6 +1018,10 @@ def main():
             letter-spacing: 0.05em;
             padding: 0.25rem 0.6rem;
             border-radius: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: calc(100% - 3rem);
         }
 
         .badge-sg {
@@ -1235,7 +1239,7 @@ def main():
             <div class="arch-container">
                 <!-- 1. Source workloads (built from Terraform state) -->
                 <div class="arch-region">
-                    <div class="region-badge badge-sg">Source · $source_region</div>
+                    <div class="region-badge badge-sg" title="Source · $source_region">Source</div>
                     <div class="region-content">
                         $arch_source_cards
                     </div>
@@ -1266,7 +1270,7 @@ def main():
 
                 <!-- 5. Recovery targets -->
                 <div class="arch-region">
-                    <div class="region-badge badge-jk">Recovery · $target_regions</div>
+                    <div class="region-badge badge-jk" title="Recovery · $target_regions">Recovery</div>
                     <div class="region-content">
                         $arch_target_cards
                     </div>
