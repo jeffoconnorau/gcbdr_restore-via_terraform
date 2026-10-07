@@ -18,6 +18,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.0"
     }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3"
+    }
   }
 }
 
@@ -70,5 +74,20 @@ provider "google-beta" {
 provider "google-beta" {
   alias   = "infra_prod"
   project = var.infra_prod_project_id
+  region  = var.region
+}
+
+# Backup project (vault_project_id, falls back to project_id). Required because
+# google_backup_dr_restore_workload has no `project` argument - it inherits the
+# provider's project, which must be the project that owns the backup vault.
+provider "google" {
+  alias   = "vault"
+  project = var.vault_project_id != "" ? var.vault_project_id : var.project_id
+  region  = var.region
+}
+
+provider "google-beta" {
+  alias   = "vault"
+  project = var.vault_project_id != "" ? var.vault_project_id : var.project_id
   region  = var.region
 }

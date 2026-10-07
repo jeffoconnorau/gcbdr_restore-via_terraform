@@ -6,6 +6,55 @@ import re
 from datetime import datetime, timezone, timedelta
 from string import Template
 
+REPO_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+
+
+def load_lab_context():
+    """Resolve project IDs / regions without hardcoding them.
+
+    Order of precedence: `lab_context` output in terraform.tfstate(.backup),
+    then simple `key = "value"` pairs in terraform.tfvars, then env vars.
+    """
+    ctx = {}
+    for name in ("terraform.tfstate", "terraform.tfstate.backup"):
+        path = os.path.join(REPO_ROOT, name)
+        try:
+            with open(path) as f:
+                value = json.load(f).get("outputs", {}).get("lab_context", {}).get("value")
+            if value:
+                ctx.update({k: v for k, v in value.items() if v is not None})
+                break
+        except (OSError, ValueError):
+            continue
+    if not ctx.get("project_id"):
+        try:
+            with open(os.path.join(REPO_ROOT, "terraform.tfvars")) as f:
+                for line in f:
+                    m = re.match(r'^\s*(\w+)\s*=\s*"([^"]*)"', line)
+                    if m:
+                        ctx.setdefault(m.group(1), m.group(2))
+        except OSError:
+            pass
+    defaults = {
+        "project_id": os.environ.get("PROJECT_ID", "source-project-id"),
+        "dr_project_id": os.environ.get("DR_PROJECT_ID", "dr-project-id"),
+        "gcbdr_project_id": os.environ.get("GCBDR_PROJECT_ID", "backup-vault-project-id"),
+        "infra_prod_project_id": os.environ.get("INFRA_PROD_PROJECT_ID", "cmek-source-project-id"),
+        "region": os.environ.get("REGION", "asia-southeast1"),
+        "dr_region": os.environ.get("DR_REGION", "asia-southeast2"),
+    }
+    for k, v in defaults.items():
+        ctx.setdefault(k, v)
+    ctx.setdefault("cross_region_vault_region", ctx["dr_region"])
+    # Standard / cross-region vaults live in vault_project_id (falls back to project_id)
+    if not ctx.get("vault_project_id"):
+        ctx["vault_project_id"] = os.environ.get("VAULT_PROJECT_ID", ctx["project_id"])
+    return ctx
+
+
+LAB = load_lab_context()
+
+
 def run_command(args):
     env = {"CLOUDSDK_PYTHON": "/usr/local/bin/python3"}
     env.update(os.environ)
@@ -166,10 +215,15 @@ def parse_tfstate(state_path):
         res_name = res.get("name", "")
         
         # 1. Compute VMs
-        if res_type == "google_backup_dr_restore_workload" and res_name in ["restore_vms", "restore_vm_rocky"]:
+        if res_type == "google_backup_dr_restore_workload" and res_name in ["restore_vms", "restore_vm_rocky", "restore_vm_xr"]:
             for inst in res.get("instances", []):
                 attrs = inst.get("attributes", {})
-                source_name = "vm-rocky" if res_name == "restore_vm_rocky" else inst.get("index_key", "")
+                if res_name == "restore_vm_rocky":
+                    source_name = "vm-rocky"
+                elif res_name == "restore_vm_xr":
+                    source_name = "vm-xr"
+                else:
+                    source_name = inst.get("index_key", "")
                 
                 target_resource = attrs.get("target_resource", [])
                 gcp_resname = ""
@@ -182,8 +236,8 @@ def parse_tfstate(state_path):
                 backup_id = attrs.get("backup_id", "")
                 vault_id = attrs.get("backup_vault_id", "")
                 ds_id = attrs.get("data_source_id", "")
-                loc = attrs.get("location", "asia-southeast1")
-                proj = "argo-svc-gcbdr" if "rocky" in source_name else "argo-svc-dev-3"
+                loc = attrs.get("location", LAB["region"])
+                proj = LAB["gcbdr_project_id"] if "rocky" in source_name else LAB["vault_project_id"]
                 
                 full_backup_id = f"projects/{proj}/locations/{loc}/backupVaults/{vault_id}/dataSources/{ds_id}/backups/{backup_id}" if (backup_id and vault_id and ds_id) else "N/A"
                 
@@ -207,8 +261,8 @@ def parse_tfstate(state_path):
                 backup_id = attrs.get("backup_id", "")
                 vault_id = attrs.get("backup_vault_id", "")
                 ds_id = attrs.get("data_source_id", "")
-                loc = attrs.get("location", "asia-southeast1")
-                proj = "argo-svc-gcbdr" if "rocky" in source_name else "argo-svc-dev-3"
+                loc = attrs.get("location", LAB["region"])
+                proj = LAB["gcbdr_project_id"] if "rocky" in source_name else LAB["vault_project_id"]
                 
                 full_backup_id = f"projects/{proj}/locations/{loc}/backupVaults/{vault_id}/dataSources/{ds_id}/backups/{backup_id}" if (backup_id and vault_id and ds_id) else "N/A"
                 
@@ -304,9 +358,11 @@ def main():
         total_apply_duration = int(apply_end - apply_start)
         apply_start_dt = datetime.fromtimestamp(apply_start, timezone.utc)
         
-        lab_project = "argo-svc-dev-3"
-        dr_project = "argo-svc-dev-4"
-        gcbdr_project = "argo-svc-gcbdr"
+        # CMEK workloads (vm-rocky) live in infra_prod_project_id; standard vault in project_id
+        lab_project = LAB["infra_prod_project_id"]
+        dr_project = LAB["dr_project_id"]
+        gcbdr_project = LAB["gcbdr_project_id"]
+        source_project = LAB["project_id"]
         
         # Parse active state
         state_path = os.path.join(os.path.dirname(__file__), "..", "terraform.tfstate")
@@ -335,12 +391,13 @@ def main():
             
         print("Querying Backup & DR operations log...")
         operations = []
-        for proj in [gcbdr_project, lab_project]:
+        op_locations = sorted({LAB["region"], LAB["cross_region_vault_region"]})
+        for proj, op_loc in [(p, l) for p in dict.fromkeys([gcbdr_project, LAB["vault_project_id"], source_project]) for l in op_locations]:
             try:
                 op_args = [
                     "gcloud", "backup-dr", "operations", "list",
                     "--project", proj,
-                    "--location", "asia-southeast1",
+                    "--location", op_loc,
                     "--format", "json"
                 ]
                 op_output = run_command(op_args)
@@ -390,6 +447,8 @@ def main():
             elif r_type == "Compute VM":
                 if "rocky" in source_name:
                     log_key = "google_backup_dr_restore_workload.restore_vm_rocky[0]"
+                elif source_name == "vm-xr":
+                    log_key = "google_backup_dr_restore_workload.restore_vm_xr[0]"
                 else:
                     log_key = f'google_backup_dr_restore_workload.restore_vms["{source_name}"]'
             elif r_type == "Persistent Disk":
@@ -430,7 +489,7 @@ def main():
                 boot_duration, boot_desc = (93.6, "1min 33.674s") if "rocky" not in source_name else (42.0, "42s")
                 
                 try:
-                    active_zone = "asia-southeast1-c" if "rocky" in source_name else "asia-southeast2-a"
+                    active_zone = f'{LAB["region"]}-c' if "rocky" in source_name else f'{LAB["dr_region"]}-a'
                     active_project = lab_project if "rocky" in source_name else dr_project
                     
                     desc_args = [

@@ -15,7 +15,7 @@ resource "random_id" "kms_suffix" {
 resource "google_kms_key_ring" "key_ring" {
   name     = "kr-regional-${random_id.kms_suffix.hex}"
   location = var.region
-  project  = var.project_id
+  project  = local.kms_project_source
 
   depends_on = [time_sleep.wait_for_apis]
 }
@@ -43,6 +43,8 @@ resource "google_project_service_identity" "compute_sa" {
   provider = google-beta
   project  = var.project_id
   service  = "compute.googleapis.com"
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 data "google_project" "project" {}
@@ -60,6 +62,8 @@ resource "google_project_service_identity" "backupdr_sa" {
   provider = google-beta
   project  = var.project_id
   service  = "backupdr.googleapis.com"
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # Grant Encrypter/Decrypter to Backup DR Service Agent

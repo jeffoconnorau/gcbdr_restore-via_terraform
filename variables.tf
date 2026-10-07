@@ -172,3 +172,183 @@ variable "enforce_dr_dependencies" {
   default     = false
 }
 
+
+# ------------------------------------------------------------------------------
+# Restore Security Posture
+# ------------------------------------------------------------------------------
+
+variable "override_shielded_vm_org_policy" {
+  description = <<-EOT
+    If true, relaxes constraints/compute.requireShieldedVm on the DR project before restores (legacy behaviour).
+    Backup and DR restores support Shielded VMs natively since April 2026, so this is no longer required and
+    defaults to false to keep the DR project's security posture intact. Only enable if a restore still fails
+    with "Error 412: Constraint constraints/compute.requireShieldedVm violated".
+  EOT
+  type        = bool
+  default     = false
+}
+
+# ------------------------------------------------------------------------------
+# Backup Vault Hardening
+# ------------------------------------------------------------------------------
+
+variable "vault_access_restriction" {
+  description = "Access restriction applied to all backup vaults. One of WITHIN_PROJECT, WITHIN_ORGANIZATION, UNRESTRICTED, WITHIN_ORG_BUT_UNRESTRICTED_FOR_BA."
+  type        = string
+  default     = "WITHIN_ORGANIZATION"
+
+  validation {
+    condition     = contains(["WITHIN_PROJECT", "WITHIN_ORGANIZATION", "UNRESTRICTED", "WITHIN_ORG_BUT_UNRESTRICTED_FOR_BA"], var.vault_access_restriction)
+    error_message = "vault_access_restriction must be one of WITHIN_PROJECT, WITHIN_ORGANIZATION, UNRESTRICTED, WITHIN_ORG_BUT_UNRESTRICTED_FOR_BA."
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Backup Plan Enhancements
+# ------------------------------------------------------------------------------
+
+variable "enable_guest_flush" {
+  description = "If true, enables application-consistent (guest flush / VSS) backups on Compute Engine instance backup plans (bp_vms, auto-protection and cross-region plans)."
+  type        = bool
+  default     = false
+}
+
+variable "max_custom_on_demand_retention_days" {
+  description = "Optional cap (days) for on-demand backups taken with a custom retention on the Cloud SQL and AlloyDB backup plans. Null leaves the field unset."
+  type        = number
+  default     = null
+}
+
+variable "sql_log_retention_days" {
+  description = "Optional number of days to retain Cloud SQL transaction logs in the vault (enables PITR from the vault). Must be >= the vault's minimum enforced log retention. Null leaves the field unset."
+  type        = number
+  default     = null
+}
+
+# ------------------------------------------------------------------------------
+# Auto-Protection Policies (Preview)
+# ------------------------------------------------------------------------------
+# Terraform provider support for auto-protection is not yet available, so the
+# policy and its bindings are managed with `gcloud beta backup-dr` through
+# terraform_data + local-exec. See auto_protection.tf.
+
+variable "enable_auto_protection" {
+  description = "If true, provisions label-driven auto-protection: dedicated backup plans, an auto-protection policy, project bindings and labelled demo workloads."
+  type        = bool
+  default     = false
+}
+
+variable "auto_protection_policy_id" {
+  description = "ID of the auto-protection policy (created in project_id / region)."
+  type        = string
+  default     = "ap-policy-gold"
+}
+
+variable "auto_protection_label_key" {
+  description = "Label key matched by the auto-protection policy. All policies applied to a given workload project must share the same label key."
+  type        = string
+  default     = "backup-tier"
+}
+
+variable "auto_protection_label_value" {
+  description = "Label value matched by the auto-protection policy."
+  type        = string
+  default     = "gold"
+}
+
+variable "auto_protection_scope_projects" {
+  description = "Workload projects bound to the auto-protection policy. Defaults to [project_id] when empty. For projects other than project_id the vault service agent is granted computeEngineOperator and diskOperator."
+  type        = list(string)
+  default     = []
+}
+
+variable "auto_protection_demo_vm_count" {
+  description = "Number of labelled demo VMs (vm-ap-N) to create so the policy has something to match. Set to 0 to only label your own resources."
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.auto_protection_demo_vm_count >= 0 && var.auto_protection_demo_vm_count <= 5
+    error_message = "auto_protection_demo_vm_count must be between 0 and 5 for a lab environment."
+  }
+}
+
+variable "auto_protection_negative_test" {
+  description = "If true, also creates vm-ap-unmatched carrying the same label key with a non-matching value. It must NOT be protected; scripts/verify_auto_protection.sh asserts this."
+  type        = bool
+  default     = true
+}
+
+variable "auto_protection_negative_label_value" {
+  description = "Non-matching label value applied to the negative-test VM."
+  type        = string
+  default     = "bronze"
+}
+
+variable "restore_auto_protected_vms" {
+  description = "If true (and perform_dr_test is true), auto-protected demo VMs are included in the DR restore drill once they have backups."
+  type        = bool
+  default     = true
+}
+
+# ------------------------------------------------------------------------------
+# Cross-Region Backups (GA June 2026)
+# ------------------------------------------------------------------------------
+
+variable "enable_cross_region_backup" {
+  description = "If true, creates a backup vault + plan in a secondary region and protects a demo VM (vm-xr) from the source region into it."
+  type        = bool
+  default     = false
+}
+
+variable "cross_region_vault_region" {
+  description = "Region for the cross-region backup vault. Defaults to dr_region when empty, so the restore reads from a vault that survives a source-region outage."
+  type        = string
+  default     = ""
+}
+
+variable "cross_region_hourly_frequency" {
+  description = "Hourly backup frequency for the cross-region backup plan."
+  type        = number
+  default     = 4
+}
+
+# ------------------------------------------------------------------------------
+# Multi-Project Layout (central backup project, central KMS, lab-owned Shared VPC)
+# ------------------------------------------------------------------------------
+
+variable "vault_project_id" {
+  description = "Project hosting the standard / auto-protection / cross-region backup vaults and plans. Empty = project_id (legacy single-project layout). Set to a dedicated backup project (usually = gcbdr_project_id) to protect project_id workloads cross-project."
+  type        = string
+  default     = ""
+}
+
+variable "kms_project_id" {
+  description = "Central Cloud KMS project for ALL lab key rings (compute CMEK, vault CMEK, infra DR key). Empty = keep each key ring in the project it encrypts (legacy layout)."
+  type        = string
+  default     = ""
+}
+
+variable "create_shared_vpc" {
+  description = "If true, Terraform creates the Shared VPC (vpc_name) in host_project_id with subnet_name in region and dr_subnet_name in dr_region, enables it as an XPN host and attaches the service projects. If false, an existing Shared VPC is looked up."
+  type        = bool
+  default     = false
+}
+
+variable "subnet_cidr" {
+  description = "CIDR for subnet_name (source region) when create_shared_vpc = true."
+  type        = string
+  default     = "10.70.0.0/24"
+}
+
+variable "dr_subnet_cidr" {
+  description = "CIDR for dr_subnet_name (dr_region) when create_shared_vpc = true."
+  type        = string
+  default     = "10.70.16.0/24"
+}
+
+variable "enable_project_services" {
+  description = "If true, Terraform also enables the required APIs in gcbdr / vault / infra_prod / host / kms projects (project_id and dr_project_id are always managed)."
+  type        = bool
+  default     = true
+}

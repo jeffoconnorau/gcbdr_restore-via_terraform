@@ -61,3 +61,5 @@ debug_discovery.log
 # DR Reports
 dr_report_*.html
 dr_test_report.html
+__pycache__/
+*.tfplan

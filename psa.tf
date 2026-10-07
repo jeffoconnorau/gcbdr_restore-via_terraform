@@ -20,7 +20,7 @@ resource "google_compute_global_address" "private_ip_address" {
   # OR `address` and `op_type`?
   # Actually for PSA we usually specify `address` and `prefix_length` OR just `prefix_length`.
   # Let's support specific range via variable.
-  network = data.google_compute_network.shared_vpc.id
+  network = local.shared_vpc_network_id
 
   # If user provided a specific CIDR (e.g. "10.200.0.0/16"), we need to split it if we use address+prefix_length.
   # Simplest way for flexible PSA is often just asking for a length (e.g. /16) unless strict IPAM is needed.
@@ -33,7 +33,7 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   count = var.create_psa ? 1 : 0
 
   provider                = google
-  network                 = data.google_compute_network.shared_vpc.id
+  network                 = local.shared_vpc_network_id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_address[0].name]
 

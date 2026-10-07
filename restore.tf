@@ -4,11 +4,18 @@
 
 locals {
   # Map of VMs to restore -> Vault Name (Resource Name)
-  vms_to_restore = var.provision_compute_vms ? {
-    "vm-debian" = google_backup_dr_backup_vault.vault.backup_vault_id
-    "vm-ubuntu" = google_backup_dr_backup_vault.vault.backup_vault_id
-    # vm-rocky is handled separately for CMEK/Infra Prod restore
-  } : {}
+  vms_to_restore = merge(
+    var.provision_compute_vms ? {
+      "vm-debian" = google_backup_dr_backup_vault.vault.backup_vault_id
+      "vm-ubuntu" = google_backup_dr_backup_vault.vault.backup_vault_id
+      # vm-rocky is handled separately for CMEK/Infra Prod restore
+    } : {},
+    # Auto-protected demo VMs (backed up by policy, stored in the same source vault).
+    # They are skipped gracefully (backup_id = "dummy") until the policy has taken its first backups.
+    var.restore_auto_protected_vms ? {
+      for vm in local.ap_demo_vm_names : vm => google_backup_dr_backup_vault.vault.backup_vault_id
+    } : {}
+  )
 }
 
 # 1. Fetch Latest Backup ID (Dynamic) for EACH VM (Standard)
@@ -22,7 +29,7 @@ data "external" "latest_backup" {
     location      = var.region
     instance_name = each.key
     vault_id      = each.value
-    vault_project = var.project_id
+    vault_project = local.vault_project
   }
 }
 
@@ -39,8 +46,8 @@ resource "google_project_iam_member" "vault_sa_target_permissions" {
 resource "google_backup_dr_restore_workload" "restore_vms" {
   for_each = { for k, v in data.external.latest_backup : k => v if v.result.backup_id != "dummy" }
 
-  provider = google-beta
-  location = var.region # The location of the Backup Vault (Source Region)
+  provider = google-beta.vault # Vault project (vault_project_id)
+  location = var.region        # The location of the Backup Vault (Source Region)
 
   # Resource arguments (derived from external data source)
   backup_vault_id = each.value.result.backup_vault_id
@@ -71,22 +78,12 @@ resource "google_backup_dr_restore_workload" "restore_vms" {
       value = "test"
     }
 
-    # 
-
-
-    # 
-
-
+    # [dependency_gate:begin] - toggled by scripts/toggle_dependencies.py
     # labels {
-
-
-    # key   = "dependency_gate"
-
-
-    # value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
-
-
+    #   key   = "dependency_gate"
+    #   value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
     # }
+    # [dependency_gate:end]
 
     # Target Network Interface (defines Target Project via subnetwork)
     advanced_machine_features {
@@ -129,9 +126,13 @@ resource "google_project_iam_member" "vault_cmek_sa_host_network_permissions" {
 }
 
 # ------------------------------------------------------------------------------
-# Organization Policy config: Disable Shielded VM Requirement for Restore
+# Organization Policy config: Disable Shielded VM Requirement for Restore (LEGACY)
 # ------------------------------------------------------------------------------
+# Since April 2026 Backup and DR restores support Shielded VMs natively, so the
+# DR project no longer needs constraints/compute.requireShieldedVm relaxed.
+# Kept behind var.override_shielded_vm_org_policy (default false) as a fallback.
 resource "google_project_organization_policy" "disable_shielded_vm_check" {
+  count      = var.override_shielded_vm_org_policy ? 1 : 0
   provider   = google
   project    = var.dr_project_id
   constraint = "constraints/compute.requireShieldedVm"
@@ -143,6 +144,7 @@ resource "google_project_organization_policy" "disable_shielded_vm_check" {
 
 # Wait for Org Policy change to propagate
 resource "time_sleep" "wait_for_policy" {
+  count           = var.override_shielded_vm_org_policy ? 1 : 0
   create_duration = "60s"
   depends_on      = [google_project_organization_policy.disable_shielded_vm_check]
 }
@@ -166,7 +168,7 @@ data "external" "latest_disk_backup" {
     location      = var.region
     instance_name = "vm-debian-data-disk" # Name of the disk resource
     vault_id      = google_backup_dr_backup_vault.vault.backup_vault_id
-    vault_project = var.project_id
+    vault_project = local.vault_project
   }
 }
 
@@ -177,7 +179,7 @@ data "external" "latest_disk_backup" {
 resource "google_backup_dr_restore_workload" "restore_disk" {
   count = (var.perform_dr_test && var.provision_compute_pd && try(one(data.external.latest_disk_backup).result.backup_id, "dummy") != "dummy") ? 1 : 0
 
-  provider = google-beta
+  provider = google-beta.vault # Vault project (vault_project_id)
   location = var.region
 
   backup_vault_id = data.external.latest_disk_backup[0].result.backup_vault_id
@@ -279,31 +281,21 @@ resource "google_backup_dr_restore_workload" "restore_vm_rocky" {
       value = "test"
     }
 
-    # 
-
-
-    # 
-
-
+    # [dependency_gate:begin] - toggled by scripts/toggle_dependencies.py
     # labels {
-
-
-    # key   = "dependency_gate"
-
-
-    # value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
-
-
+    #   key   = "dependency_gate"
+    #   value = var.enforce_dr_dependencies ? terraform_data.phase_2_complete[0].id : "none"
     # }
+    # [dependency_gate:end]
 
     advanced_machine_features {
       enable_uefi_networking = false
     }
 
-    # Use Shared VPC with requested Singapore Subnet
+    # Use the source Shared VPC subnet (in-place CMEK restore to the source region)
     network_interfaces {
       network    = "projects/${var.host_project_id}/global/networks/${var.vpc_name}"
-      subnetwork = "projects/${var.host_project_id}/regions/${var.region}/subnetworks/vpc-sub-sg-25"
+      subnetwork = "projects/${var.host_project_id}/regions/${var.region}/subnetworks/${var.subnet_name}"
     }
 
     shielded_instance_config {

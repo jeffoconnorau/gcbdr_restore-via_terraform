@@ -401,3 +401,128 @@ resource "google_project_iam_member" "dr_alloydb_sa_source_backupdr_permissions"
   member   = "serviceAccount:service-${data.google_project.dr_project.number}@gcp-sa-alloydb.iam.gserviceaccount.com"
 }
 ```
+
+---
+
+## 6. Label-Driven Protection: Auto-Protection Policies (Preview)
+
+Instead of one `google_backup_dr_backup_plan_association` per resource, an auto-protection policy in the **backup vault project** maps a label (`key=value`) to one backup plan per resource type, and a **binding** applies it to each workload project. Only Compute Engine instances and disks are supported, one region per policy, and every policy bound to the same workload project must share the same label key.
+
+There is no Terraform provider resource yet (checked up to `google` 8.6.0), so the lab wraps `gcloud beta` in `terraform_data` (see `auto_protection.tf`):
+
+```hcl
+resource "terraform_data" "auto_protection_policy" {
+  input = {
+    project       = var.project_id
+    location      = var.region
+    policy_id     = "ap-policy-gold"
+    label_key     = "backup-tier"
+    label_value   = "gold"
+    instance_plan = google_backup_dr_backup_plan.bp_autoprotect_vms[0].id
+    disk_plan     = google_backup_dr_backup_plan.bp_autoprotect_disks[0].id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      gcloud beta backup-dr auto-protection-policies create ${self.output.policy_id} \
+        --project=${self.output.project} --location=${self.output.location} \
+        --criteria=key=${self.output.label_key},values=${self.output.label_value} \
+        --backup-plan-details=resource-type=compute.googleapis.com/Instance,backup-plan=${self.output.instance_plan} \
+        --backup-plan-details=resource-type=compute.googleapis.com/Disk,backup-plan=${self.output.disk_plan} \
+        --no-async
+    EOT
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "gcloud beta backup-dr auto-protection-policies delete ${self.output.policy_id} --project=${self.output.project} --location=${self.output.location} --quiet"
+  }
+}
+
+# One binding per workload project
+#   gcloud beta backup-dr auto-protection-bindings create bind-<project> \
+#     --auto-protection-policy=ap-policy-gold --location=<region> --scope=projects/<project>
+```
+
+Workloads opt in purely through labels – note the absence of any association resource:
+
+```hcl
+resource "google_compute_instance" "vm_autoprotect" {
+  name   = "vm-ap-1"
+  labels = { "backup-tier" = "gold" }
+  # ...
+}
+```
+
+Cross-project scopes require the vault service agent to hold `roles/backupdr.computeEngineOperator` and `roles/backupdr.diskOperator` in each workload project. Verify with `./scripts/verify_auto_protection.sh` (includes a negative control VM labelled `backup-tier=bronze`).
+
+---
+
+## 7. Cross-Region Backups
+
+Compute Engine instances/disks, Filestore and AlloyDB can be backed up into a vault in a **different region**. The backup plan and the association both live in the **workload's** region (the API rejects a BPA whose region differs from its plan); only the plan's `backup_vault` points at the secondary-region vault. Restores use the vault's region as `location`:
+
+```hcl
+resource "google_backup_dr_backup_vault" "vault_xr" {
+  location                                   = var.dr_region # secondary region
+  backup_vault_id                            = "bv-xr-${var.dr_region}"
+  backup_minimum_enforced_retention_duration = "86400s"
+}
+
+resource "google_backup_dr_backup_plan" "bp_vms_xr" {
+  location       = var.region # workload region; vault is remote
+  backup_plan_id = "bp-vms-xr-${var.dr_region}"
+  resource_type  = "compute.googleapis.com/Instance"
+  backup_vault   = google_backup_dr_backup_vault.vault_xr.id
+  # backup_rules { ... }
+}
+
+resource "google_backup_dr_backup_plan_association" "bpa_vm_xr" {
+  location                   = var.region # workload region
+  resource_type              = "compute.googleapis.com/Instance"
+  resource                   = google_compute_instance.vm_xr.id
+  backup_plan                = google_backup_dr_backup_plan.bp_vms_xr.id
+  backup_plan_association_id = "bpa-vm-xr"
+}
+
+resource "google_backup_dr_restore_workload" "restore_vm_xr" {
+  provider = google-beta
+  location = var.dr_region # read from the secondary-region vault
+  # backup_vault_id / data_source_id / backup_id from scripts/get_latest_backup.sh
+  # compute_instance_target_environment { project = var.dr_project_id, zone = "${var.dr_region}-a" }
+}
+```
+
+---
+
+## 8. Backup Plan Enhancements
+
+```hcl
+# Application-consistent VM backups (Guest Flush on Linux / VSS on Windows)
+resource "google_backup_dr_backup_plan" "bp_vms" {
+  # ...
+  compute_instance_backup_plan_properties {
+    guest_flush = true
+  }
+}
+
+# Cloud SQL: keep transaction logs in the vault (PITR) and cap custom on-demand retention
+resource "google_backup_dr_backup_plan" "bp_sql" {
+  # ...
+  log_retention_days                  = 7
+  max_custom_on_demand_retention_days = 30
+}
+
+# Vault hardening
+resource "google_backup_dr_backup_vault" "vault" {
+  # ...
+  access_restriction = "WITHIN_ORGANIZATION"
+}
+```
+
+On-demand backup with custom retention (Cloud SQL / AlloyDB):
+
+```bash
+gcloud backup-dr backup-plan-associations trigger-backup <bpa-id> \
+  --project=<workload-project> --location=<region> --custom-retention-days=7
+```
