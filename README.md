@@ -312,7 +312,7 @@ Backup vaults holding backups inside their enforced-retention window cannot be d
 terraform apply -var="perform_dr_test=false"
 
 # 2. Record vault names, then hand the vaults over to manual cleanup
-terraform output -json | jq -r '.backup_vault_id.value, .backup_vault_cmek_id.value, (.cross_region_backup.value.vault // empty)' | tee vaults_to_delete.txt
+gcloud backup-dr backup-vaults list --project=<vault_project_id> --location=- --format="value(name)" | tee vaults_to_delete.txt   # outputs go null once a destroy has started
 terraform state rm google_backup_dr_backup_vault.vault google_backup_dr_backup_vault.vault_cmek 'google_backup_dr_backup_vault.vault_xr[0]'
 
 # 3. Destroy everything else (VMs, plans, BPAs, auto-protection policies, Shared VPC, DR VPC, KMS keys, IAM)
