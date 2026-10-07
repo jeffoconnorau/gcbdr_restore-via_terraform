@@ -339,6 +339,102 @@ def parse_tfstate(state_path):
                 
     return discovered
 
+
+REGION_NAMES = {
+    "asia-southeast1": "Singapore", "asia-southeast2": "Jakarta", "australia-southeast1": "Sydney",
+    "australia-southeast2": "Melbourne", "us-central1": "Iowa", "us-east1": "South Carolina",
+    "europe-west1": "Belgium", "europe-west2": "London", "asia-northeast1": "Tokyo",
+}
+
+
+def region_label(region):
+    name = REGION_NAMES.get(region)
+    return f"{name} ({region})" if name else region
+
+
+def _esc(text):
+    return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def _workload_category(res):
+    """Map a restored resource to (category title, tag) for the architecture map."""
+    src, rtype = res.get("source_name", ""), res.get("type", "")
+    if "rocky" in src:
+        return "CMEK Workloads", "Customer-managed keys"
+    if rtype == "Compute VM" and src.startswith("vm-ap-"):
+        return "Auto-protected VMs", f"Label {LAB.get('auto_protection_label_key', 'backup-tier')}={LAB.get('auto_protection_label_value', 'gold')}"
+    if rtype == "Compute VM" and src == "vm-xr":
+        return "Cross-region Protected VM", "Remote-region vault"
+    if rtype == "Compute VM":
+        return "Compute VMs", "Standard VMs"
+    if rtype == "Persistent Disk":
+        return "Persistent Disks", "Standalone disk plan"
+    if rtype == "Cloud SQL":
+        return "Cloud SQL", "Managed Databases"
+    if rtype == "Filestore Share":
+        return "Filestore", "File Storage"
+    if rtype == "AlloyDB Cluster":
+        return "AlloyDB", "Managed Databases"
+    return rtype or "Other", ""
+
+
+def _project_of(resource_name):
+    parts = (resource_name or "").split("/")
+    return parts[parts.index("projects") + 1] if "projects" in parts and parts.index("projects") + 1 < len(parts) else ""
+
+
+def _region_of(resource_name, fallback):
+    parts = (resource_name or "").split("/")
+    for key in ("zones", "locations", "regions"):
+        if key in parts and parts.index(key) + 1 < len(parts):
+            loc = parts[parts.index(key) + 1]
+            return loc.rsplit("-", 1)[0] if key == "zones" else loc
+    return fallback
+
+
+def build_architecture_map(resources):
+    """Render the source -> vault -> target map from what was actually restored."""
+    source_groups, target_groups, vaults = {}, {}, {}
+    for res in resources:
+        title, tag = _workload_category(res)
+        src_proj = LAB["infra_prod_project_id"] if "rocky" in res.get("source_name", "") else LAB["project_id"]
+        source_groups.setdefault(title, {"tag": tag, "names": [], "projects": set()})
+        source_groups[title]["names"].append(res.get("source_name", ""))
+        source_groups[title]["projects"].add(src_proj)
+
+        tgt_name = res.get("gcp_resource_name") or ""
+        tgt_proj = _project_of(tgt_name) or LAB["dr_project_id"]
+        tgt_region = _region_of(tgt_name, LAB["dr_region"])
+        key = (title, tgt_proj, tgt_region)
+        target_groups.setdefault(key, []).append(res.get("target_name", ""))
+
+        m = re.match(r"projects/([^/]+)/locations/([^/]+)/backupVaults/([^/]+)/", res.get("full_backup_id") or "")
+        if m:
+            vaults.setdefault((m.group(3), m.group(1), m.group(2)), set()).add(title)
+
+    def card(cls, title, meta, tag, tag_cls=""):
+        return (f'<div class="arch-card {cls}"><div class="card-title">{_esc(title)}</div>'
+                f'<div class="card-meta">{_esc(meta)}</div>'
+                f'<div class="card-tag {tag_cls}">{_esc(tag)}</div></div>')
+
+    src_cards = "".join(
+        card("source-card", t, ", ".join(sorted(set(g["names"]))), f'{g["tag"]} · {", ".join(sorted(g["projects"]))}')
+        for t, g in source_groups.items()
+    ) or card("source-card", "No workloads", "-", "")
+    vault_cards = "".join(
+        f'<div class="arch-card vault-card" style="margin-bottom:0.75rem"><div class="vault-icon"></div>'
+        f'<div class="card-title">{_esc(v)}</div><div class="card-meta">{_esc(p)} · {_esc(region_label(l))}</div>'
+        f'<div class="card-tag tag-vault">{_esc(", ".join(sorted(cats)))}</div></div>'
+        for (v, p, l), cats in sorted(vaults.items())
+    ) or '<div class="arch-card vault-card"><div class="card-title">Backup Vault</div></div>'
+    tgt_cards = "".join(
+        card("dr-card", f"Restored {t}", ", ".join(sorted(names)), f"{p} · {region_label(r)}", "tag-dr")
+        for (t, p, r), names in target_groups.items()
+    )
+    target_regions = sorted({r for (_, _, r) in target_groups}) or [LAB["dr_region"]]
+    return src_cards, vault_cards, tgt_cards, " / ".join(region_label(r) for r in target_regions)
+
+
 def main():
     try:
         if len(sys.argv) < 2:
@@ -1081,7 +1177,7 @@ def main():
             </div>
             <div class="stat-card">
                 <div class="stat-label">Target Region</div>
-                <div class="stat-value">asia-southeast2 (Jakarta)</div>
+                <div class="stat-value">$target_regions</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Restored Workloads</div>
@@ -1137,25 +1233,11 @@ def main():
         <section>
             <h2>Replication and DR Verification Architecture Map</h2>
             <div class="arch-container">
-                <!-- 1. Singapore Region (Source workloads) -->
+                <!-- 1. Source workloads (built from Terraform state) -->
                 <div class="arch-region">
-                    <div class="region-badge badge-sg">Singapore (asia-southeast1)</div>
+                    <div class="region-badge badge-sg">Source · $source_region</div>
                     <div class="region-content">
-                        <div class="arch-card source-card">
-                            <div class="card-title">Production Compute VMs</div>
-                            <div class="card-meta">vm-debian, vm-ubuntu</div>
-                            <div class="card-tag">Standard VMs</div>
-                        </div>
-                        <div class="arch-card source-card">
-                            <div class="card-title">Cloud SQL (PG / MySQL)</div>
-                            <div class="card-meta">sql-pg, sql-mysql</div>
-                            <div class="card-tag">Managed Databases</div>
-                        </div>
-                        <div class="arch-card source-card">
-                            <div class="card-title">AlloyDB & Filestore</div>
-                            <div class="card-meta">alloydb-cluster, fs-share</div>
-                            <div class="card-tag">High Perf Storage/DB</div>
-                        </div>
+                        $arch_source_cards
                     </div>
                 </div>
 
@@ -1170,15 +1252,10 @@ def main():
 
                 <!-- 3. Central Backup Vault -->
                 <div class="arch-vault-col">
-                    <div class="arch-card vault-card">
-                        <div class="vault-icon"></div>
-                        <div class="card-title">bv-asia-southeast1</div>
-                        <div class="card-meta">Backup Vault</div>
-                        <div class="card-tag tag-vault">Immutable Store</div>
-                    </div>
+                    $arch_vault_cards
                 </div>
 
-                <!-- 4. Restore Flow (Vault -> Jakarta Restored VMs) -->
+                <!-- 4. Restore Flow -->
                 <div class="arch-flow">
                     <svg width="100%" height="220" style="overflow: visible;">
                         <path d="M 0 110 C 40 110, 40 60, 80 60" fill="none" stroke="#10b981" stroke-width="2.5" stroke-dasharray="6,4" class="restore-path"/>
@@ -1187,25 +1264,11 @@ def main():
                     </svg>
                 </div>
 
-                <!-- 5. Jakarta Region (Restored VMs) -->
+                <!-- 5. Recovery targets -->
                 <div class="arch-region">
-                    <div class="region-badge badge-jk">Jakarta (asia-southeast2)</div>
+                    <div class="region-badge badge-jk">Recovery · $target_regions</div>
                     <div class="region-content">
-                        <div class="arch-card dr-card">
-                            <div class="card-title">Restored Compute VMs</div>
-                            <div class="card-meta">vm-debian-dr, vm-ubuntu-dr</div>
-                            <div class="card-tag tag-dr">DR Subnet</div>
-                        </div>
-                        <div class="arch-card dr-card">
-                            <div class="card-title">Restored Cloud SQL</div>
-                            <div class="card-meta">restored-sql-pg-dr, restored-sql-mysql-dr</div>
-                            <div class="card-tag tag-dr">DR Instances</div>
-                        </div>
-                        <div class="arch-card dr-card">
-                            <div class="card-title">Restored AlloyDB & FS</div>
-                            <div class="card-meta">restored-alloydb-cluster-dr, restored-fs-share-dr</div>
-                            <div class="card-tag tag-dr">DR Services</div>
-                        </div>
+                        $arch_target_cards
                     </div>
                 </div>
             </div>
@@ -1216,7 +1279,7 @@ def main():
             <ul class="meta-list">
                 <li><strong>Drill Date:</strong> $drill_date</li>
                 <li><strong>Target Provider:</strong> Google Cloud Backup & DR</li>
-                <li><strong>Network Mode:</strong> Private Service Access (PSA)</li>
+                <li><strong>Projects:</strong> $project_summary</li>
             </ul>
         </footer>
     </div>
@@ -1224,8 +1287,18 @@ def main():
 </html>
 """
         
+        arch_src, arch_vault, arch_tgt, target_regions = build_architecture_map(discovered_resources)
+        project_summary = " · ".join(f"{k}: {v}" for k, v in [
+            ("workloads", LAB["project_id"]), ("backup", LAB["vault_project_id"]),
+            ("CMEK vault", LAB["gcbdr_project_id"]), ("DR", LAB["dr_project_id"])])
         tmpl = Template(html_template)
         html_report = tmpl.safe_substitute(
+            arch_source_cards=arch_src,
+            arch_vault_cards=arch_vault,
+            arch_target_cards=arch_tgt,
+            target_regions=target_regions,
+            source_region=region_label(LAB["region"]),
+            project_summary=project_summary,
             total_vms=len(results),
             avg_restore=avg_restore,
             table_rows=table_rows,

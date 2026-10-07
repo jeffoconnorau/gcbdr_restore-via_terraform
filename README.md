@@ -298,34 +298,42 @@ The `./run_restore.sh` wrapper script captures the exact T-0 start epoch of the 
 ## Cleanup
 
 ### Destroy Restored Workloads Only
-To remove only the restored resources (leaving backups intact). The simplest way is to re-apply with restores disabled:
+Re-apply with restores disabled (`terraform.tfvars` normally already has `perform_dr_test = false`, so a plain `terraform apply` does the same). `google_backup_dr_restore_workload` defaults to `delete_restored_instance = true`, so this **deletes the live restored VMs/disks** in the DR (and in-place CMEK) targets, not just the state entries. Backups and the base lab are untouched, ready for the next drill.
 
 ```bash
 terraform apply -var="perform_dr_test=false"
 ```
 
-Or target them explicitly:
+### Destroy the Entire Lab
+Backup vaults holding backups inside their enforced-retention window cannot be deleted, so take them out of Terraform first, destroy everything else, and delete the vaults once their backups have expired.
 
 ```bash
-terraform destroy \
-  -target=google_alloydb_instance.restored_alloydb_instance \
-  -target=terraform_data.restored_alloydb_cluster \
-  -target=google_sql_database_instance.restored_sql_pg \
-  -target=google_sql_database_instance.restored_sql_mysql \
-  -target=google_filestore_instance.restored_fs_share \
-  -target=google_compute_attached_disk.attach_restored_disk \
-  -target=google_compute_attached_disk.attach_restored_rocky_disk \
-  -target=google_backup_dr_restore_workload.restore_disk \
-  -target=google_backup_dr_restore_workload.restore_rocky_disk \
-  -target=google_backup_dr_restore_workload.restore_vms \
-  -target=google_backup_dr_restore_workload.restore_vm_rocky \
-  -target=google_backup_dr_restore_workload.restore_vm_xr
+# 1. Restored workloads (as above)
+terraform apply -var="perform_dr_test=false"
 
-# If Isolated VPC was created, destroy it too
-terraform destroy \
-  -target=google_compute_network.isolated_dr_vpc \
-  -target=google_compute_subnetwork.isolated_dr_subnet
+# 2. Record vault names, then hand the vaults over to manual cleanup
+terraform output -json | jq -r '.backup_vault_id.value, .backup_vault_cmek_id.value, (.cross_region_backup.value.vault // empty)' | tee vaults_to_delete.txt
+terraform state rm google_backup_dr_backup_vault.vault google_backup_dr_backup_vault.vault_cmek 'google_backup_dr_backup_vault.vault_xr[0]'
+
+# 3. Destroy everything else (VMs, plans, BPAs, auto-protection policies, Shared VPC, DR VPC, KMS keys, IAM)
+terraform destroy
+
+# 3b. Only if 3 stops with BACKUP_PLAN_ASSOCIATIONS_EXIST on bp-autoprotect-*:
+#     policy-created BPAs are not Terraform-managed and are cleaned up asynchronously.
+PROJECT=<project_id>; REGION=<region>
+for b in $(gcloud backup-dr backup-plan-associations list --project=$PROJECT --location=$REGION \
+             --filter="backupPlan~bp-autoprotect" --format="value(name.basename())"); do
+  gcloud backup-dr backup-plan-associations delete "$b" --project=$PROJECT --location=$REGION --quiet
+done
+terraform destroy
+
+# 4. After the backups expire (rule retention = 3 days; vault minimum enforced retention = 1 day)
+while read -r v; do
+  gcloud backup-dr backup-vaults delete "$v" --ignore-inactive-datasources --ignore-backup-plan-references --quiet
+done < vaults_to_delete.txt
 ```
+
+Notes: key rings cannot be deleted in Cloud KMS (Terraform only forgets them; key versions are scheduled for destruction). APIs stay enabled (`disable_on_destroy = false`). Delete the vaults before **1 Nov 2026** or the vault project will also carry a Backup and DR lien (see caveat 6).
 
 > [!WARNING]
 > **Full Destroy Caveats**: If you run `terraform destroy` on the entire project, you may encounter errors:
