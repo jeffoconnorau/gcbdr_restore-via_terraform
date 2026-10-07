@@ -137,6 +137,9 @@ resource "terraform_data" "auto_protection_policy" {
     resource_type = each.value.resource_type
     plan          = each.value.plan
     description   = "Lab auto-protection (${each.key}): ${var.auto_protection_label_key}=${var.auto_protection_label_value} -> ${basename(each.value.plan)}"
+    # Used only by the destroy provisioner (which may only reference self).
+    scope_projects = join(",", local.ap_scope_projects)
+    destroy_script = abspath("${path.module}/scripts/ap_destroy.sh")
   }
 
   # Any change to the policy spec re-runs the create/update provisioner.
@@ -173,14 +176,13 @@ resource "terraform_data" "auto_protection_policy" {
     EOT
   }
 
+  # Runs after all bindings are gone (bindings depend on the policy). Retries
+  # through POLICY_IN_USE_BY_BINDING, then waits until no policy-managed BPA
+  # references the plan, so the backup plan delete that follows succeeds.
   provisioner "local-exec" {
     when        = destroy
     interpreter = ["bash", "-c"]
-    command     = <<-EOT
-      echo "[INFO] Deleting auto-protection policy ${self.output.policy_id} (resources stay protected until associations are cleaned up, up to 2-8h)."
-      gcloud beta backup-dr auto-protection-policies delete "${self.output.policy_id}" \
-        --project="${self.output.project}" --location="${self.output.location}" --quiet || true
-    EOT
+    command     = "bash '${self.output.destroy_script}' policy '${self.output.project}' '${self.output.location}' '${self.output.policy_id}' '${basename(self.output.plan)}' '${self.output.scope_projects}'"
   }
 }
 
@@ -197,6 +199,8 @@ resource "terraform_data" "auto_protection_binding" {
     policy_id  = local.ap_policies[each.value.policy].policy_id
     binding_id = substr("bind-${each.value.scope_project}", 0, 63)
     scope      = "projects/${each.value.scope_project}"
+    # Destroy provisioners may only reference self, so carry the path here.
+    destroy_script = abspath("${path.module}/scripts/ap_destroy.sh")
   }
 
   triggers_replace = [
@@ -219,15 +223,12 @@ resource "terraform_data" "auto_protection_binding" {
     EOT
   }
 
+  # Unbinding is async (DELETION_INITIATED while the service unwinds the
+  # policy-managed BPAs); block until the binding is really gone.
   provisioner "local-exec" {
     when        = destroy
     interpreter = ["bash", "-c"]
-    command     = <<-EOT
-      echo "[INFO] Removing binding ${self.output.binding_id} (${self.output.scope})."
-      gcloud beta backup-dr auto-protection-bindings delete "${self.output.binding_id}" \
-        --auto-protection-policy="${self.output.policy_id}" \
-        --project="${self.output.project}" --location="${self.output.location}" --quiet || true
-    EOT
+    command     = "bash '${self.output.destroy_script}' binding '${self.output.project}' '${self.output.location}' '${self.output.policy_id}' '${self.output.binding_id}'"
   }
 
   depends_on = [

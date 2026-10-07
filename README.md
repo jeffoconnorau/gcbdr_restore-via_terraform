@@ -320,16 +320,21 @@ terraform output -json | jq -r '.backup_vault_id.value, .backup_vault_cmek_id.va
 terraform state rm google_backup_dr_backup_vault.vault google_backup_dr_backup_vault.vault_cmek 'google_backup_dr_backup_vault.vault_xr[0]'
 
 # 3. Destroy everything else (VMs, plans, BPAs, auto-protection policies, Shared VPC, DR VPC, KMS keys, IAM)
+#    Auto-protection teardown blocks in scripts/ap_destroy.sh: binding unbind (async,
+#    DELETION_INITIATED) -> policy delete -> wait until no policy-managed BPA references
+#    bp-autoprotect-*. Default timeout per step 3600s (AP_DESTROY_TIMEOUT_SECONDS).
 terraform destroy
 
-# 3b. Only if 3 stops with BACKUP_PLAN_ASSOCIATIONS_EXIST on bp-autoprotect-*:
-#     policy-created BPAs are not Terraform-managed and are cleaned up asynchronously.
-PROJECT=<project_id>; REGION=<region>
-for b in $(gcloud backup-dr backup-plan-associations list --project=$PROJECT --location=$REGION \
-             --filter="backupPlan~bp-autoprotect" --format="value(name.basename())"); do
-  gcloud backup-dr backup-plan-associations delete "$b" --project=$PROJECT --location=$REGION --quiet
+# 3b. If 3 times out, just re-run it later (the helper is idempotent). Policy-managed
+#     BPAs CANNOT be deleted directly ("managed by the AutoProtection system"). Watch:
+VAULT_PROJECT=<vault_project_id>; WORKLOAD_PROJECT=<project_id>; REGION=<region>
+for p in vms disks; do
+  gcloud beta backup-dr auto-protection-bindings list --auto-protection-policy=ap-policy-gold-$p \
+    --project=$VAULT_PROJECT --location=$REGION --format="value(name.basename(),state)"
 done
-terraform destroy
+gcloud backup-dr backup-plan-associations list --project=$WORKLOAD_PROJECT --location=$REGION \
+  --filter="backupPlan~bp-autoprotect" --format="value(name.basename(),state)"
+AP_DESTROY_TIMEOUT_SECONDS=7200 terraform destroy
 
 # 4. After the backups expire (rule retention = 3 days; vault minimum enforced retention = 1 day)
 while read -r v; do
@@ -345,7 +350,7 @@ Notes: key rings cannot be deleted in Cloud KMS (Terraform only forgets them; ke
 > 2.  **Backup Vault Backups**: Vaults cannot be fully destroyed if they contain backups (`NON_EMPTY_BACKUP_VAULT_DELETION`). You must manually delete the backups from the GCBDR Console first or accept that the soft-deleted Vaults persist.
 > 3.  **Backup Plans**: May fail if Associations are not largely deleted first (`BACKUP_PLAN_ASSOCIATIONS_EXIST`). Re-running destroy usually fixes this.
 > 4.  **Service Networking**: May fail to release the IP range if Cloud SQL instances were just deleted (`Error code 9`). This typically resolves itself after a few minutes.
-> 5.  **Auto-protection**: Destroy deletes the bindings and then the policy via `gcloud beta`. Policy-created associations are removed asynchronously (2–8h), which can temporarily block deleting `bp-autoprotect-*` plans with `BACKUP_PLAN_ASSOCIATIONS_EXIST` – re-run destroy later.
+> 5.  **Auto-protection**: Teardown is strictly ordered and asynchronous: a binding delete only moves it to `DELETION_INITIATED`; the policy delete fails with `POLICY_IN_USE_BY_BINDING` until the binding is gone; policy-managed BPAs cannot be deleted directly and block `bp-autoprotect-*` plan deletion (`BACKUP_PLAN_ASSOCIATIONS_EXIST`). [ap_destroy.sh](scripts/ap_destroy.sh) waits through each stage; if it times out, re-run destroy later.
 > 6.  **Project liens (from 1 Nov 2026)**: Backup and DR automatically places a lien on any project containing a backup vault with enforced-retention backups. Terraform resource destroys are unaffected, but **deleting the lab projects** requires removing the lien first (optionally gated by Privileged Access Manager multi-party approval).
 
 ## Known Limitations
