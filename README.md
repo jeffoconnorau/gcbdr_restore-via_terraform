@@ -171,25 +171,7 @@ Once the mode is selected, run the recovery:
 
 Auto-protection removes the need for one `google_backup_dr_backup_plan_association` per workload: a policy in the backup vault project assigns backup plans to every Compute Engine instance/disk in the bound workload projects that carries a matching label.
 
-```mermaid
-flowchart LR
-  subgraph vault["Backup vault project (project_id / region)"]
-    P["Policy ap-policy-gold (backup-tier=gold)"]
-    BPV["bp-autoprotect-vms"]
-    BPD["bp-autoprotect-disks"]
-    P --> BPV
-    P --> BPD
-  end
-  subgraph wl["Workload project(s) (binding scope)"]
-    V1["vm-ap-1, vm-ap-2 (backup-tier=gold)"]
-    D1["vm-ap-1-data-disk (backup-tier=gold)"]
-    N1["vm-ap-unmatched (backup-tier=bronze)"]
-  end
-  P -- "binding: projects/..." --> wl
-  BPV -. "auto BPA" .-> V1
-  BPD -. "auto BPA" .-> D1
-  N1 -. "no match, stays unprotected" .- P
-```
+See the [architecture diagram](#centralised-4-project-layout-greenfield): the purple *label match* edge runs from `ap-policy-gold-*` (backup project) to the `backup-tier=gold` resources in the workload project; `vm-ap-unmatched` (`bronze`) is the negative test.
 
 ### How it is implemented
 * The Google provider (checked up to `google` 8.6.0) has **no auto-protection resource yet**, so `auto_protection.tf` drives `gcloud beta backup-dr auto-protection-policies|auto-protection-bindings` from `terraform_data` with create (idempotent create-or-update) and destroy provisioners. Bindings are destroyed before the policy.
@@ -228,6 +210,10 @@ The verification script asserts:
 ## Centralised 4-Project Layout (greenfield)
 
 For brand-new projects (e.g. Argolis) the lab can build everything itself and keep **all backup control-plane objects in one backup project**:
+
+![GCBDR lab: 4-project architecture](docs/architecture.svg)
+
+<sub>Source: [docs/architecture.dendrite](docs/architecture.dendrite) (Dendrite DSL). Edit in Dendrite Studio and re-export `docs/architecture.svg`. Dashed boxes are opt-in (`provision_cloud_sql`, `provision_alloydb`, `provision_filestore`).</sub>
 
 | Role | Variable(s) | Example | Contains |
 |---|---|---|---|

@@ -1,0 +1,186 @@
+// GCBDR Terraform lab - centralised 4-project layout
+// Render: node <dendrite skill>/scripts/render_dendrite.mjs --input docs/architecture.dendrite ...
+theme: "gcp-pro"
+renderOrder: nodes-first
+direction: right
+spacing: 28
+
+const GcpBlue = "#1a73e8"
+const GcpGreen = "#1e8e3e"
+const Coral = "#d93025"
+const Amber = "#b06000"
+const Purple = "#9334e6"
+const DarkSlate = "#202124"
+const SubText = "#5f6368"
+const CardBorder = "#dadce0"
+const SurfaceWhite = "#ffffff"
+
+Style @Ghost { fill: transparent, strokeWidth: 0, fontColor: transparent, padding: 0 }
+Style @ArchitectureRoot {
+  fill: "#f8fafd", strokeColor: "#c2d7f5", strokeWidth: 1.5, borderRadius: 16,
+  padding: 24, gap: 22, fontColor: "#3c4043", fontSize: 22, labelWeight: bold,
+  icon: "GoogleCloud", iconSize: 28
+}
+Style @ProjectZone {
+  strokeWidth: 1.5, borderRadius: 12, padding: 16, gap: 14,
+  fontColor: $DarkSlate, fontSize: 16, labelWeight: bold
+}
+Style @SubGroup {
+  fill: "#ffffff", strokeColor: "#dadce0", strokeWidth: 1, borderRadius: 10,
+  padding: 12, gap: 10, fontColor: $DarkSlate, fontSize: 13.5, labelWeight: bold
+}
+Style @ProductCard {
+  width: 184, height: 62,
+  fill: $SurfaceWhite, strokeColor: $CardBorder, strokeWidth: 1, borderRadius: 8,
+  fontColor: $DarkSlate, subFontColor: $SubText,
+  fontSize: 13.5, subFontSize: 11, labelWeight: bold,
+  textAlign: "left", textVAlign: "middle",
+  iconPosition: "left", iconSize: 26, padding: 10, shadow: true
+}
+Style @OptionalCard { base: @ProductCard, strokeColor: "#9aa0a6", fontColor: $SubText }
+
+Zone @GoogleCloud {
+  title: "Google Cloud"
+  subtitle: "Backup and DR lab: 4-project layout (asia-southeast1 to asia-southeast2)"
+  style: @ArchitectureRoot
+  layout: matrix
+  areas: [
+    "wl bk dr",
+    "host host host"
+  ]
+  sizes: ["1.1fr", "1fr", "1fr"]
+
+  // ---------------------------------------------------------------- dev-7
+  Zone @Workloads {
+    area: "wl"
+    title: "argo-svc-dev-7"
+    subtitle: "Workloads · asia-southeast1"
+    style: @ProjectZone, fill: "#fce8e6", strokeColor: "#f6aea9"
+    layout: column, align: stretch
+
+    Zone @AutoProtected {
+      title: "Auto-protected (backup-tier=gold)"
+      style: @SubGroup, dashed: true, layout: matrix, cols: 2
+      [vm_ap: "vm-ap-1, vm-ap-2" | "Label match"] { style: @ProductCard, icon: "ComputeEngine" }
+      [pd_ap: "vm-ap-1-data-disk" | "Label match"] { style: @ProductCard, icon: "PersistentDisk" }
+      [vm_neg: "vm-ap-unmatched" | "bronze: no match"] { style: @OptionalCard, icon: "ComputeEngine" }
+      [bpa: "BPAs" | "Live with resource"] { style: @ProductCard, icon: "BackupAndDR" }
+    }
+    Zone @TfProtected {
+      title: "Terraform-managed BPAs"
+      style: @SubGroup, layout: matrix, cols: 2
+      [vm_std: "vm-debian, ubuntu" | "Compute Engine"] { style: @ProductCard, icon: "ComputeEngine" }
+      [vm_rocky: "vm-rocky" | "CMEK disks"] { style: @ProductCard, icon: "ComputeEngine" }
+      [pd_std: "Data disks" | "Persistent Disk"] { style: @ProductCard, icon: "PersistentDisk" }
+      [vm_xr: "vm-xr" | "Cross-region backup"] { style: @ProductCard, icon: "ComputeEngine" }
+    }
+    Zone @OptionalDbs {
+      title: "Opt-in managed services"
+      style: @SubGroup, dashed: true, layout: row
+      [sql_src: "Cloud SQL" | "PG + MySQL"] { style: @OptionalCard, width: 150, icon: "CloudSQL" }
+      [alloy_src: "AlloyDB" | "Cluster"] { style: @OptionalCard, width: 140, icon: "AlloyDB" }
+      [fs_src: "Filestore" | "Share"] { style: @OptionalCard, width: 140, icon: "Filestore" }
+    }
+  }
+
+  // ---------------------------------------------------------------- dev-6
+  Zone @BackupProject {
+    area: "bk"
+    title: "argo-svc-dev-6"
+    subtitle: "Backup project · vaults, plans, policies"
+    style: @ProjectZone, fill: "#e6f4ea", strokeColor: "#81c995"
+    layout: column, align: stretch
+
+    Zone @Policies {
+      title: "Auto-protection policies (gcloud beta)"
+      style: @SubGroup, layout: row
+      [ap_policy: "ap-policy-gold-vms" | "+ ap-policy-gold-disks"] { style: @ProductCard, width: 196, icon: "BackupAndDR" }
+      [ap_binding: "Bindings" | "scope: argo-svc-dev-7"] { style: @ProductCard, width: 160, icon: "IAM" }
+    }
+    Zone @Plans {
+      title: "Backup plans"
+      style: @SubGroup, layout: matrix, cols: 2
+      [bp_std: "bp-vms, bp-disk" | "+ SQL, AlloyDB, FS"] { style: @ProductCard, icon: "BackupAndDR" }
+      [bp_ap: "bp-autoprotect-*" | "Hourly, 3-day"] { style: @ProductCard, icon: "BackupAndDR" }
+      [bp_cmek: "bp-rocky-*-cmek" | "Daily, 3-day"] { style: @ProductCard, icon: "BackupAndDR" }
+      [bp_xr: "bp-vms-xr" | "Source-region plan"] { style: @ProductCard, icon: "BackupAndDR" }
+    }
+    Zone @Vaults {
+      title: "Backup vaults"
+      style: @SubGroup, layout: column
+      [bv_std: "bv-asia-southeast1" | "Standard vault"] { style: @ProductCard, width: 220, icon: "BackupAndDR" }
+      [bv_cmek: "bv-cmek-*-remote" | "CMEK vault"] { style: @ProductCard, width: 220, icon: "BackupAndDR" }
+      [bv_xr: "bv-xr-asia-southeast2" | "Cross-region vault"] { style: @ProductCard, width: 220, icon: "BackupAndDR" }
+    }
+  }
+
+  // ---------------------------------------------------------------- dev-8
+  Zone @DrProject {
+    area: "dr"
+    title: "argo-svc-dev-8"
+    subtitle: "DR / isolated recovery · asia-southeast2"
+    style: @ProjectZone, fill: "#e8f0fe", strokeColor: "#8ab4f8"
+    layout: column, align: stretch
+
+    Zone @DrNet {
+      title: "Isolated recovery network"
+      style: @SubGroup, layout: row
+      [dr_vpc: "isolated-dr-vpc" | "No route to prod"] { style: @ProductCard, width: 172, icon: "VirtualPrivateCloud" }
+      [dr_dns: "DR DNS zone" | "Private + policy"] { style: @ProductCard, width: 172, icon: "CloudDNS" }
+    }
+    Zone @Restored {
+      title: "Restored workloads (perform_dr_test)"
+      style: @SubGroup, layout: matrix, cols: 2
+      [rvm: "vm-*-dr" | "Restored VMs"] { style: @ProductCard, icon: "ComputeEngine" }
+      [rpd: "Restored disks" | "Re-attached"] { style: @ProductCard, icon: "PersistentDisk" }
+      [rvm_xr: "vm-xr-dr" | "From remote vault"] { style: @ProductCard, icon: "ComputeEngine" }
+      [rvm_ap: "vm-ap-*-dr" | "Auto-protected"] { style: @ProductCard, icon: "ComputeEngine" }
+    }
+    Zone @RestoredDbs {
+      title: "Opt-in restores"
+      style: @SubGroup, dashed: true, layout: row
+      [rsql: "Cloud SQL" | "restored-sql-*-dr"] { style: @OptionalCard, width: 172, icon: "CloudSQL" }
+      [ralloy: "AlloyDB, Filestore" | "restored-*-dr"] { style: @OptionalCard, width: 172, icon: "AlloyDB" }
+    }
+  }
+
+  // ---------------------------------------------------------------- dev-9
+  Zone @HostProject {
+    area: "host"
+    title: "argo-svc-dev-9"
+    subtitle: "Shared VPC host + central Cloud KMS"
+    style: @ProjectZone, fill: "#fef7e0", strokeColor: "#fde293"
+    layout: row, justify: center
+
+    Zone @SharedVpc {
+      title: "Shared VPC: shared-vpc-lab"
+      style: @SubGroup, layout: row
+      [sub_as1: "sub-lab-asse1" | "10.70.0.0/24 (source)"] { style: @ProductCard, width: 184, icon: "VirtualPrivateCloud" }
+      [sub_as2: "sub-lab-asse2" | "10.70.16.0/24 (DR)"] { style: @ProductCard, width: 184, icon: "VirtualPrivateCloud" }
+      [fw: "Firewall rules" | "IAP SSH + internal"] { style: @ProductCard, width: 172, icon: "CloudFirewall" }
+    }
+    Zone @Kms {
+      title: "Cloud KMS (cross-project CMEK)"
+      style: @SubGroup, layout: row
+      [kms_wl: "kr-* infra keys" | "Rocky VM disks"] { style: @ProductCard, width: 184, icon: "KMS" }
+      [kms_vault: "kr-* vault key" | "CMEK backup vault"] { style: @ProductCard, width: 184, icon: "KMS" }
+      [kms_dr: "kr-* DR keys" | "asia-southeast2"] { style: @ProductCard, width: 172, icon: "KMS" }
+    }
+  }
+}
+
+// Protection flow
+[ap_policy] -.-> [AutoProtected] { color: $Purple, strokeWidth: 2, sourceAnchor: "left", targetAnchor: "right", label: "label match" }
+[bpa] --> [Plans] { color: $GcpGreen, strokeWidth: 2, sourceAnchor: "right", targetAnchor: "left", label: "BPA to plan" }
+[TfProtected] --> [Plans] { color: $GcpGreen, strokeWidth: 2, sourceAnchor: "right", targetAnchor: "left" }
+[Plans] --> [Vaults] { color: $GcpGreen, strokeWidth: 2, sourceAnchor: "bottom", targetAnchor: "top", label: "backup" }
+
+// Restore flow
+[bv_std] --> [Restored] { color: $GcpBlue, strokeWidth: 2, sourceAnchor: "right", targetAnchor: "left", label: "restore" }
+[bv_xr] --> [rvm_xr] { color: $GcpBlue, strokeWidth: 2, dashed: true, sourceAnchor: "right", targetAnchor: "left", label: "XR restore" }
+
+// Foundation (Shared VPC + CMEK)
+[sub_as1] --> [Workloads] { color: $Amber, strokeWidth: 1.8, dashed: true, sourceAnchor: "top", targetAnchor: "bottom", label: "service proj" }
+[sub_as2] --> [DrProject] { color: $Amber, strokeWidth: 1.8, dashed: true, sourceAnchor: "top", targetAnchor: "bottom", label: "service proj" }
+[kms_vault] --> [Vaults] { color: $Coral, strokeWidth: 1.8, dashed: true, sourceAnchor: "top", targetAnchor: "bottom", label: "CMEK" }
+[bv_cmek] --> [TfProtected] { color: $Coral, strokeWidth: 1.8, dashed: true, sourceAnchor: "left", targetAnchor: "right", label: "Rocky restore" }

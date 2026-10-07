@@ -213,8 +213,15 @@ resource "terraform_data" "auto_protection_binding" {
     command     = <<-EOT
       set -euo pipefail
       COMMON=(--auto-protection-policy="${self.output.policy_id}" --project="${self.output.project}" --location="${self.output.location}")
-      if gcloud beta backup-dr auto-protection-bindings describe "${self.output.binding_id}" "$${COMMON[@]}" >/dev/null 2>&1; then
-        echo "[INFO] Binding ${self.output.binding_id} -> ${self.output.scope} already exists."
+      # A binding still unwinding from a previous destroy must finish before re-create.
+      for i in $(seq 1 240); do
+        STATE=$(gcloud beta backup-dr auto-protection-bindings describe "${self.output.binding_id}" "$${COMMON[@]}" --format='value(state)' 2>/dev/null || true)
+        [[ "$STATE" == "DELETION_INITIATED" ]] || break
+        echo "[INFO] Binding ${self.output.binding_id} is DELETION_INITIATED from a previous destroy - waiting 60s ($i/240)."
+        sleep 60
+      done
+      if [[ -n "$STATE" && "$STATE" != "DELETION_INITIATED" ]]; then
+        echo "[INFO] Binding ${self.output.binding_id} -> ${self.output.scope} already exists ($STATE)."
       else
         echo "[INFO] Binding policy ${self.output.policy_id} to ${self.output.scope}."
         gcloud beta backup-dr auto-protection-bindings create "${self.output.binding_id}" "$${COMMON[@]}" \
