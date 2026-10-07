@@ -1,0 +1,6 @@
+#!/bin/bash
+# Test-only gcloud stub used by `terraform test` (see README > Offline tests).
+# Records every call and simulates "not found" for describe so the create path runs.
+echo "gcloud $*" >> "${GCLOUD_STUB_LOG:-/tmp/gcloud_stub.log}"
+for a in "$@"; do [[ "$a" == describe ]] && { echo "ERROR: NOT_FOUND (stub)" >&2; exit 1; }; done
+exit 0

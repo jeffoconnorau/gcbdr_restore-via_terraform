@@ -124,7 +124,7 @@ resource "google_compute_firewall" "allow_ssh_isolated" {
 # ------------------------------------------------------------------------------
 
 resource "google_compute_global_address" "dr_private_ip_address" {
-  count = var.create_isolated_dr_vpc ? 1 : 0
+  count = local.dr_psa_needed ? 1 : 0 # only for Cloud SQL / Filestore / AlloyDB restores
 
   provider      = google
   project       = var.dr_project_id
@@ -137,7 +137,7 @@ resource "google_compute_global_address" "dr_private_ip_address" {
 }
 
 resource "google_service_networking_connection" "dr_private_vpc_connection" {
-  count = var.create_isolated_dr_vpc ? 1 : 0
+  count = local.dr_psa_needed ? 1 : 0 # only for Cloud SQL / Filestore / AlloyDB restores
 
   provider                = google
   network                 = google_compute_network.isolated_dr_vpc[0].id

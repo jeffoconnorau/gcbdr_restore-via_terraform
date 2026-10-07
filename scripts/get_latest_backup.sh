@@ -121,8 +121,6 @@ fi
 
 echo "[INFO] Selected Latest Backup ID: $BACKUP_ID" >&2
 
-echo "[INFO] Selected Latest Backup ID: $BACKUP_ID" >&2
-
 # Parse components from the full Backup ID
 # Format: projects/{project}/locations/{location}/backupVaults/{vault}/dataSources/{datasource}/backups/{backup}
 SHORT_BACKUP_ID=$(echo "$BACKUP_ID" | sed -E 's/.*backups\///')

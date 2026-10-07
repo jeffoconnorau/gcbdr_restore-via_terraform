@@ -39,6 +39,13 @@ resource "google_project_service" "compute" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "dr_compute" {
+  provider           = google
+  project            = var.dr_project_id
+  service            = "compute.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_project_service" "servicenetworking" {
   provider           = google
   project            = var.project_id
@@ -139,7 +146,10 @@ resource "time_sleep" "wait_for_apis" {
     google_project_service.filestore,
     google_project_service.dr_filestore,
     google_project_service.alloydb,
-    google_project_service.dr_alloydb
+    google_project_service.dr_alloydb,
+    google_project_service.dr_compute,
+    google_project_service.extra,
+    google_compute_shared_vpc_service_project.service,
   ]
 
   triggers = {

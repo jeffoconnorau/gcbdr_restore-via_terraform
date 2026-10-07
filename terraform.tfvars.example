@@ -40,3 +40,45 @@ provision_filestore     = false
 provision_alloydb       = false
 restore_suffix          = "-dr"
 parallelism             = 30
+
+# Legacy: only needed if a Shielded VM restore still fails with Error 412
+override_shielded_vm_org_policy = false
+
+# ------------------------------------------------------------------------------
+# Auto-Protection Policies (Preview - managed via gcloud beta)
+# ------------------------------------------------------------------------------
+
+enable_auto_protection          = false
+auto_protection_policy_id       = "ap-policy-gold"
+auto_protection_label_key       = "backup-tier"   # Must be the SAME key for every policy bound to a project
+auto_protection_label_value     = "gold"
+auto_protection_scope_projects  = []              # [] => [project_id]
+auto_protection_demo_vm_count   = 2               # vm-ap-1..N (+ vm-ap-1-data-disk)
+auto_protection_negative_test   = true            # vm-ap-unmatched (backup-tier=bronze) must stay unprotected
+restore_auto_protected_vms      = true
+
+# ------------------------------------------------------------------------------
+# Cross-Region Backups (vault in a secondary region)
+# ------------------------------------------------------------------------------
+
+enable_cross_region_backup      = false
+cross_region_vault_region       = ""              # "" => dr_region
+cross_region_hourly_frequency   = 4
+
+# ------------------------------------------------------------------------------
+# Backup Plan / Vault Enhancements
+# ------------------------------------------------------------------------------
+
+enable_guest_flush                  = false       # Application-consistent VM backups
+vault_access_restriction            = "WITHIN_ORGANIZATION"
+# max_custom_on_demand_retention_days = 30        # Cloud SQL + AlloyDB on-demand cap
+# sql_log_retention_days              = 7         # Cloud SQL PITR logs in the vault
+
+# ------------------------------------------------------------------------------
+# Centralised multi-project layout (optional - see README "Centralised 4-Project Layout")
+# ------------------------------------------------------------------------------
+# vault_project_id  = "backup-project-id"   # all vaults / plans / auto-protection policy
+# kms_project_id    = "kms-project-id"      # all key rings
+# create_shared_vpc = true                  # build vpc_name + subnets in host_project_id
+# subnet_cidr       = "10.70.0.0/24"
+# dr_subnet_cidr    = "10.70.16.0/24"

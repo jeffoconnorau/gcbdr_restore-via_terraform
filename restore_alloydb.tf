@@ -7,7 +7,7 @@
 data "google_client_openid_userinfo" "caller" {}
 
 locals {
-  caller_is_sa = endswith(data.google_client_openid_userinfo.caller.email, ".gserviceaccount.com")
+  caller_is_sa  = endswith(data.google_client_openid_userinfo.caller.email, ".gserviceaccount.com")
   caller_member = "${local.caller_is_sa ? "serviceAccount" : "user"}:${data.google_client_openid_userinfo.caller.email}"
 }
 
@@ -21,7 +21,7 @@ data "external" "latest_alloydb_backup" {
     location      = var.region
     instance_name = try(google_alloydb_cluster.alloydb_cluster[0].cluster_id, "alloydb-cluster-unknown")
     vault_id      = google_backup_dr_backup_vault.vault.backup_vault_id
-    vault_project = var.project_id
+    vault_project = local.vault_project
   }
 }
 

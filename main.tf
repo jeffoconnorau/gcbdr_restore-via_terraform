@@ -10,12 +10,12 @@ resource "google_compute_instance" "vm_debian" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-11"
+      image = "debian-cloud/debian-12" # debian-11 family retired
     }
   }
 
   network_interface {
-    subnetwork = data.google_compute_subnetwork.subnet.self_link
+    subnetwork = local.source_subnet_self_link
     # No public IP
   }
 
@@ -59,7 +59,7 @@ resource "google_compute_instance" "vm_ubuntu" {
   }
 
   network_interface {
-    subnetwork = data.google_compute_subnetwork.subnet.self_link
+    subnetwork = local.source_subnet_self_link
   }
 
   shielded_instance_config {
@@ -106,7 +106,7 @@ resource "google_compute_instance" "vm_rocky" {
   }
 
   network_interface {
-    subnetwork = data.google_compute_subnetwork.subnet.self_link
+    subnetwork = local.source_subnet_self_link
   }
 
   shielded_instance_config {
@@ -168,7 +168,7 @@ resource "google_sql_database_instance" "sql_pg" {
     tier = "db-custom-2-3840"
     ip_configuration {
       ipv4_enabled    = false
-      private_network = data.google_compute_network.shared_vpc.self_link
+      private_network = local.shared_vpc_network_self_link
     }
   }
   deletion_protection = false # For lab/testing environment
@@ -186,7 +186,7 @@ resource "google_sql_database_instance" "sql_mysql" {
     tier = "db-custom-2-3840"
     ip_configuration {
       ipv4_enabled    = false
-      private_network = data.google_compute_network.shared_vpc.self_link
+      private_network = local.shared_vpc_network_self_link
     }
   }
   deletion_protection = false # For lab/testing environment
@@ -215,7 +215,7 @@ resource "google_filestore_instance" "fs_share" {
   }
 
   networks {
-    network      = data.google_compute_network.shared_vpc.id
+    network      = local.shared_vpc_network_id
     modes        = ["MODE_IPV4"]
     connect_mode = "PRIVATE_SERVICE_ACCESS"
   }
@@ -236,7 +236,7 @@ resource "google_alloydb_cluster" "alloydb_cluster" {
   location   = var.region
 
   network_config {
-    network = data.google_compute_network.shared_vpc.id
+    network = local.shared_vpc_network_id
   }
 
   # For testing/lab environment, disable deletion protection

@@ -7,7 +7,9 @@ resource "google_kms_key_ring" "key_ring_infra" {
   provider = google.infra_prod
   name     = "kr-rocky-vm-${random_id.kms_suffix_infra.hex}"
   location = var.region
-  project  = var.infra_prod_project_id
+  project  = local.kms_project_infra
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # Random suffix for Key Rings
@@ -46,7 +48,9 @@ resource "google_kms_key_ring" "key_ring_infra_dr" {
   provider = google.infra_prod
   name     = "kr-rocky-vm-dr-${random_id.kms_suffix_infra.hex}"
   location = var.dr_region
-  project  = var.infra_prod_project_id
+  project  = local.kms_project_infra
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # 2. DR Crypto Key
@@ -76,6 +80,8 @@ resource "google_project_service_identity" "compute_sa_infra" {
   provider = google-beta.infra_prod
   project  = var.infra_prod_project_id
   service  = "compute.googleapis.com"
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # Grant Encrypter/Decrypter to Infra Prod Compute Service Agent (for Disk Encryption)
@@ -101,6 +107,16 @@ resource "google_project_iam_member" "vault_sa_compute_operator" {
   provider = google.infra_prod
   project  = var.infra_prod_project_id
   role     = "roles/backupdr.computeEngineOperator"
+  member   = "serviceAccount:${google_backup_dr_backup_vault.vault_cmek.service_account}"
+}
+
+# Disk Operator for the CMEK vault service agent (bp-rocky-disk-cmek protects a
+# standalone disk in this project from the gcbdr project's vault).
+resource "google_project_iam_member" "vault_cmek_sa_disk_operator" {
+  count    = var.provision_compute_pd ? 1 : 0
+  provider = google.infra_prod
+  project  = var.infra_prod_project_id
+  role     = "roles/backupdr.diskOperator"
   member   = "serviceAccount:${google_backup_dr_backup_vault.vault_cmek.service_account}"
 }
 

@@ -15,7 +15,9 @@ resource "google_kms_key_ring" "key_ring_gcbdr" {
   provider = google.gcbdr
   name     = "kr-backup-vaults-${random_id.kms_suffix_gcbdr.hex}"
   location = var.region
-  project  = var.gcbdr_project_id
+  project  = local.kms_project_gcbdr
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # 2. Crypto Key in GCBDR Project
@@ -42,6 +44,8 @@ resource "google_project_service_identity" "backupdr_sa_gcbdr" {
   provider = google-beta.gcbdr
   project  = var.gcbdr_project_id
   service  = "backupdr.googleapis.com"
+
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # Grant Encrypter/Decrypter to the GCBDR Backup DR Service Agent on the GCBDR Key

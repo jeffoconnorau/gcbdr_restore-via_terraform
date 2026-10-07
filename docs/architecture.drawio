@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-07-15T12:00:00.000Z" agent="Dendrite" version="24.0.0" type="device">
+  <diagram id="Dendrite_Diagram" name="Architecture">
+    <mxGraphModel dx="1422" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3000" pageHeight="4000" math="0" shadow="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="cell_2" value="Google Cloud" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#f8fafd;strokeColor=#c2d7f5;strokeWidth=1.5;fontColor=#3c4043;fontSize=14;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1554" height="1070" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_3" value="argo-svc-dev-7" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#fce8e6;strokeColor=#f6aea9;strokeWidth=1.5;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_2">
+          <mxGeometry x="24" y="86" width="518" height="726" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_4" value="Auto-protected (backup-tier=gold)" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;dashed=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_3">
+          <mxGeometry x="16" y="86.57142857142856" width="486" height="204" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_5" value="Terraform-managed BPAs" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_3">
+          <mxGeometry x="16" y="332" width="486" height="204" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_6" value="Opt-in managed services" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;dashed=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_3">
+          <mxGeometry x="16" y="577.4285714285714" width="486" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_7" value="argo-svc-dev-6" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#e6f4ea;strokeColor=#81c995;strokeWidth=1.5;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_2">
+          <mxGeometry x="582" y="86" width="454" height="726" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_8" value="Auto-protection policies (gcloud beta)" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_7">
+          <mxGeometry x="16" y="66" width="422" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_9" value="Backup plans" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_7">
+          <mxGeometry x="16" y="202" width="422" height="204" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_10" value="Backup vaults" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_7">
+          <mxGeometry x="16" y="430" width="422" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_11" value="argo-svc-dev-8" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#e8f0fe;strokeColor=#8ab4f8;strokeWidth=1.5;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_2">
+          <mxGeometry x="1076" y="86" width="454" height="726" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_12" value="Isolated recovery network" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_11">
+          <mxGeometry x="16" y="112" width="422" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_13" value="Restored workloads (perform_dr_test)" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_11">
+          <mxGeometry x="16" y="286" width="422" height="204" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_14" value="Opt-in restores" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;dashed=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_11">
+          <mxGeometry x="16" y="552" width="422" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_15" value="argo-svc-dev-9" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#fef7e0;strokeColor=#fde293;strokeWidth=1.5;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_2">
+          <mxGeometry x="24" y="852" width="1506" height="194" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_16" value="Shared VPC: shared-vpc-lab" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_15">
+          <mxGeometry x="150" y="66" width="596" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_17" value="Cloud KMS (cross-project CMEK)" style="swimlane;fontStyle=1;horizontal=1;startSize=30;collapsible=1;rounded=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=14;shadow=1;" vertex="1" parent="cell_15">
+          <mxGeometry x="760" y="66" width="596" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_18" value="&lt;b&gt;[ComputeEngine] vm-ap-1, vm-ap-2&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Label match&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_4">
+          <mxGeometry x="34" y="44" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_19" value="&lt;b&gt;[PersistentDisk] vm-ap-1-data-disk&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Label match&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_4">
+          <mxGeometry x="268" y="44" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_20" value="&lt;b&gt;[ComputeEngine] vm-ap-unmatched&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;bronze: no match&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9aa0a6;strokeWidth=1;fontColor=#5f6368;fontSize=13;shadow=1;" vertex="1" parent="cell_4">
+          <mxGeometry x="34" y="124" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_21" value="&lt;b&gt;[BackupAndDR] BPAs&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Live with resource&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_4">
+          <mxGeometry x="268" y="124" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_22" value="&lt;b&gt;[ComputeEngine] vm-debian, ubuntu&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Compute Engine&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_5">
+          <mxGeometry x="34" y="44" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_23" value="&lt;b&gt;[ComputeEngine] vm-rocky&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;CMEK disks&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_5">
+          <mxGeometry x="268" y="44" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_24" value="&lt;b&gt;[PersistentDisk] Data disks&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Persistent Disk&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_5">
+          <mxGeometry x="34" y="124" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_25" value="&lt;b&gt;[ComputeEngine] vm-xr&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Cross-region backup&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_5">
+          <mxGeometry x="268" y="124" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_26" value="&lt;b&gt;[CloudSQL] Cloud SQL&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;PG + MySQL&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9aa0a6;strokeWidth=1;fontColor=#5f6368;fontSize=13;shadow=1;" vertex="1" parent="cell_6">
+          <mxGeometry x="12" y="38" width="150" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_27" value="&lt;b&gt;[AlloyDB] AlloyDB&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Cluster&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9aa0a6;strokeWidth=1;fontColor=#5f6368;fontSize=13;shadow=1;" vertex="1" parent="cell_6">
+          <mxGeometry x="178" y="38" width="140" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_28" value="&lt;b&gt;[Filestore] Filestore&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Share&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9aa0a6;strokeWidth=1;fontColor=#5f6368;fontSize=13;shadow=1;" vertex="1" parent="cell_6">
+          <mxGeometry x="334" y="38" width="140" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_29" value="&lt;b&gt;[BackupAndDR] ap-policy-gold-vms&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;+ ap-policy-gold-disks&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_8">
+          <mxGeometry x="12" y="38" width="196" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_30" value="&lt;b&gt;[IAM] Bindings&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;scope: argo-svc-dev-7&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_8">
+          <mxGeometry x="224" y="38" width="160" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_31" value="&lt;b&gt;[BackupAndDR] bp-vms, bp-disk&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;+ SQL, AlloyDB, FS&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_9">
+          <mxGeometry x="18" y="44" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_32" value="&lt;b&gt;[BackupAndDR] bp-autoprotect-*&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Hourly, 3-day&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_9">
+          <mxGeometry x="220" y="44" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_33" value="&lt;b&gt;[BackupAndDR] bp-rocky-*-cmek&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Daily, 3-day&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_9">
+          <mxGeometry x="18" y="124" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_34" value="&lt;b&gt;[BackupAndDR] bp-vms-xr&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Source-region plan&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_9">
+          <mxGeometry x="220" y="124" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_35" value="&lt;b&gt;[BackupAndDR] bv-asia-southeast1&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Standard vault&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_10">
+          <mxGeometry x="101" y="44" width="220" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_36" value="&lt;b&gt;[BackupAndDR] bv-cmek-*-remote&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;CMEK vault&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_10">
+          <mxGeometry x="101" y="122" width="220" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_37" value="&lt;b&gt;[BackupAndDR] bv-xr-asia-southeast2&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Cross-region vault&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_10">
+          <mxGeometry x="101" y="200" width="220" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_38" value="&lt;b&gt;[VirtualPrivateCloud] isolated-dr-vpc&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;No route to prod&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_12">
+          <mxGeometry x="12" y="38" width="172" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_39" value="&lt;b&gt;[CloudDNS] DR DNS zone&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Private + policy&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_12">
+          <mxGeometry x="200" y="38" width="172" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_40" value="&lt;b&gt;[ComputeEngine] vm-*-dr&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Restored VMs&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_13">
+          <mxGeometry x="18" y="44" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_41" value="&lt;b&gt;[PersistentDisk] Restored disks&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Re-attached&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_13">
+          <mxGeometry x="220" y="44" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_42" value="&lt;b&gt;[ComputeEngine] vm-xr-dr&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;From remote vault&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_13">
+          <mxGeometry x="18" y="124" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_43" value="&lt;b&gt;[ComputeEngine] vm-ap-*-dr&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Auto-protected&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_13">
+          <mxGeometry x="220" y="124" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_44" value="&lt;b&gt;[CloudSQL] Cloud SQL&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;restored-sql-*-dr&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9aa0a6;strokeWidth=1;fontColor=#5f6368;fontSize=13;shadow=1;" vertex="1" parent="cell_14">
+          <mxGeometry x="12" y="38" width="172" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_45" value="&lt;b&gt;[AlloyDB] AlloyDB, Filestore&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;restored-*-dr&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9aa0a6;strokeWidth=1;fontColor=#5f6368;fontSize=13;shadow=1;" vertex="1" parent="cell_14">
+          <mxGeometry x="200" y="38" width="172" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_46" value="&lt;b&gt;[VirtualPrivateCloud] sub-lab-asse1&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;10.70.0.0/24 (source)&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_16">
+          <mxGeometry x="12" y="38" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_47" value="&lt;b&gt;[VirtualPrivateCloud] sub-lab-asse2&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;10.70.16.0/24 (DR)&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_16">
+          <mxGeometry x="212" y="38" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_48" value="&lt;b&gt;[CloudFirewall] Firewall rules&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;IAP SSH + internal&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_16">
+          <mxGeometry x="412" y="38" width="172" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_49" value="&lt;b&gt;[KMS] kr-* infra keys&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;Rocky VM disks&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_17">
+          <mxGeometry x="12" y="38" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_50" value="&lt;b&gt;[KMS] kr-* vault key&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;CMEK backup vault&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_17">
+          <mxGeometry x="212" y="38" width="184" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cell_51" value="&lt;b&gt;[KMS] kr-* DR keys&lt;/b&gt;&lt;br&gt;&lt;font color=&#39;#64748B&#39; size=&#39;1&#39;&gt;asia-southeast2&lt;/font&gt;" style="rounded=1;arcSize=15;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dadce0;strokeWidth=1;fontColor=#202124;fontSize=13;shadow=1;" vertex="1" parent="cell_17">
+          <mxGeometry x="412" y="38" width="172" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_52" value="label match" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9334e6;strokeWidth=2;dashed=1;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_29" target="cell_4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_53" value="BPA to plan" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1e8e3e;strokeWidth=2;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_21" target="cell_9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_54" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1e8e3e;strokeWidth=2;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_5" target="cell_9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_55" value="backup" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1e8e3e;strokeWidth=2;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_9" target="cell_10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_56" value="restore" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1a73e8;strokeWidth=2;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_35" target="cell_13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_57" value="XR restore" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1a73e8;strokeWidth=2;dashed=1;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_37" target="cell_42">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_58" value="service proj" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b06000;strokeWidth=1.8;dashed=1;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_46" target="cell_3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_59" value="service proj" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b06000;strokeWidth=1.8;dashed=1;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_47" target="cell_11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_60" value="CMEK" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d93025;strokeWidth=1.8;dashed=1;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_50" target="cell_10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_61" value="Rocky restore" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d93025;strokeWidth=1.8;dashed=1;fontColor=#334155;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="cell_36" target="cell_5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

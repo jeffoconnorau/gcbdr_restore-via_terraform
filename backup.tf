@@ -12,9 +12,11 @@ resource "random_id" "vault_suffix" {
 
 resource "google_backup_dr_backup_vault" "vault" {
   provider                                   = google
+  project                                    = local.vault_project
   location                                   = var.region
   backup_vault_id                            = "bv-${var.region}-${random_id.vault_suffix.hex}"
   backup_minimum_enforced_retention_duration = "86400s" # 1 day
+  access_restriction                         = var.vault_access_restriction
 
   depends_on = [time_sleep.wait_for_apis]
 }
@@ -23,8 +25,9 @@ resource "google_backup_dr_backup_vault" "vault_cmek" {
   provider                                   = google.gcbdr
   project                                    = var.gcbdr_project_id
   location                                   = var.region
-  backup_vault_id                            = "bv-cmek-${var.region}-remote-${random_id.vault_suffix.hex}"
+  backup_vault_id                            = "bv-cmek-${var.region}-remote-${var.cmek_vault_suffix != "" ? var.cmek_vault_suffix : random_id.vault_suffix.hex}"
   backup_minimum_enforced_retention_duration = "86400s" # 1 day
+  access_restriction                         = var.vault_access_restriction
 
   encryption_config {
     kms_key_name = google_kms_crypto_key.vault_key_gcbdr.id
@@ -54,6 +57,7 @@ resource "time_sleep" "wait_for_vault" {
 resource "google_backup_dr_backup_plan" "bp_vms" {
   count          = var.provision_compute_vms ? 1 : 0
   provider       = google
+  project        = local.vault_project
   location       = var.region
   backup_plan_id = "bp-vms-daily-3d-retention"
   resource_type  = "compute.googleapis.com/Instance"
@@ -74,6 +78,14 @@ resource "google_backup_dr_backup_plan" "bp_vms" {
         start_hour_of_day = 0
         end_hour_of_day   = 24
       }
+    }
+  }
+
+  # Application-consistent backups (Guest Flush on Linux / VSS on Windows)
+  dynamic "compute_instance_backup_plan_properties" {
+    for_each = var.enable_guest_flush ? [1] : []
+    content {
+      guest_flush = true
     }
   }
 }
@@ -143,10 +155,15 @@ resource "google_backup_dr_backup_plan" "bp_rocky_disk_cmek" {
 resource "google_backup_dr_backup_plan" "bp_sql" {
   count          = var.provision_cloud_sql ? 1 : 0
   provider       = google
+  project        = local.vault_project
   location       = var.region
   backup_plan_id = "bp-sql-daily-3d-retention"
   resource_type  = "sqladmin.googleapis.com/Instance"
   backup_vault   = google_backup_dr_backup_vault.vault.id
+
+  # Optional: retain transaction logs in the vault (PITR) and cap custom on-demand retention
+  log_retention_days                  = var.sql_log_retention_days
+  max_custom_on_demand_retention_days = var.max_custom_on_demand_retention_days
 
   # Explicit dependency on the wait timer
   depends_on = [time_sleep.wait_for_vault]
@@ -187,7 +204,9 @@ resource "time_sleep" "wait_for_resources" {
     # Filestore
     google_filestore_instance.fs_share,
     # AlloyDB
-    google_alloydb_instance.alloydb_instance
+    google_alloydb_instance.alloydb_instance,
+    # Cross-project vault IAM (no-op in the single-project layout)
+    time_sleep.wait_for_cross_project_iam,
   ]
 }
 
@@ -243,6 +262,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_disk_rocky" {
 
   depends_on = [
     time_sleep.wait_for_vault_cmek,
+    time_sleep.wait_for_cross_project_iam,
     google_compute_attached_disk.attach_rocky_data
   ]
 }
@@ -284,6 +304,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_sql_mysql" {
 resource "google_backup_dr_backup_plan" "bp_disk" {
   count          = var.provision_compute_pd ? 1 : 0
   provider       = google
+  project        = local.vault_project
   location       = var.region
   backup_plan_id = "bp-disk-daily-3d-retention"
   resource_type  = "compute.googleapis.com/Disk"
@@ -333,6 +354,7 @@ resource "google_backup_dr_backup_plan_association" "bpa_disk_debian" {
 resource "google_backup_dr_backup_plan" "bp_filestore" {
   count          = var.provision_filestore ? 1 : 0
   provider       = google
+  project        = local.vault_project
   location       = var.region
   backup_plan_id = "bp-filestore-daily-3d-retention"
   resource_type  = "file.googleapis.com/Instance"
@@ -379,10 +401,14 @@ resource "google_backup_dr_backup_plan_association" "bpa_filestore" {
 resource "google_backup_dr_backup_plan" "bp_alloydb" {
   count          = var.provision_alloydb ? 1 : 0
   provider       = google
+  project        = local.vault_project
   location       = var.region
   backup_plan_id = "bp-alloydb-daily-3d-retention"
   resource_type  = "alloydb.googleapis.com/Cluster"
   backup_vault   = google_backup_dr_backup_vault.vault.id
+
+  # Optional: cap on-demand backups taken with a custom retention
+  max_custom_on_demand_retention_days = var.max_custom_on_demand_retention_days
 
   depends_on = [time_sleep.wait_for_vault]
 
