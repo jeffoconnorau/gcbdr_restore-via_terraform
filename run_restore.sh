@@ -21,15 +21,36 @@ echo ""
 echo "If workloads report No changes on pass 1, re-run this script to execute pass 2."
 echo "================================================================================"
 echo ""
+# This wrapper exists to run the DR drill, so enable it unless the caller
+# explicitly set perform_dr_test (terraform.tfvars normally keeps it false for
+# the base/backup phase).
+EXTRA_ARGS=()
+if [[ "$*" != *"perform_dr_test"* ]]; then
+  EXTRA_ARGS+=("-var=perform_dr_test=true")
+  echo "[INFO] Adding -var=perform_dr_test=true (pass -var=perform_dr_test=false to override)"
+fi
+
 echo "[INFO] Running terraform apply with -parallelism=$PARALLELISM"
 START_EPOCH=$(date +%s)
 
 # Pipe output to log file and preserve exit status of terraform
-terraform apply -parallelism="$PARALLELISM" "$@" 2>&1 | tee terraform_apply.log
+terraform apply -parallelism="$PARALLELISM" "${EXTRA_ARGS[@]}" "$@" 2>&1 | tee terraform_apply.log
 APPLY_STATUS=${PIPESTATUS[0]}
 
-# Compile report on successful apply
-if [[ "$*" != *"-destroy"* ]] && [[ "$*" != *"plan"* ]] && [[ $APPLY_STATUS -eq 0 ]]; then
+# Restored workloads currently in state (empty on pass 1 while IAM propagates)
+RESTORED=$(terraform state list 2>/dev/null | grep -cE '^(google_backup_dr_restore_workload\.|google_sql_database_instance\.restored_|google_filestore_instance\.restored_|terraform_data\.restored_alloydb_cluster|google_alloydb_instance\.restored_)' || true)
+
+if [[ $APPLY_STATUS -eq 0 ]] && [[ "$*" != *"-destroy"* ]] && [[ "${RESTORED:-0}" -eq 0 ]]; then
+  echo ""
+  echo "========================================================================="
+  echo "[PASS 1 COMPLETE] No restored workloads yet - skipping DR report."
+  echo "  Cross-project IAM / recovery-point discovery is still settling."
+  echo "  Wait ~5 minutes, then re-run: ./run_restore.sh $*"
+  echo "========================================================================="
+fi
+
+# Compile report on successful apply that actually restored something
+if [[ "$*" != *"-destroy"* ]] && [[ "$*" != *"plan"* ]] && [[ $APPLY_STATUS -eq 0 ]] && [[ "${RESTORED:-0}" -gt 0 ]]; then
   echo ""
   echo "========================================================================="
   echo "Step 2: Compiling Automated DR Drill Verification Report..."
@@ -38,3 +59,5 @@ if [[ "$*" != *"-destroy"* ]] && [[ "$*" != *"plan"* ]] && [[ $APPLY_STATUS -eq 
   sleep 5
   python3 scripts/generate_report.py "$START_EPOCH" "$(date +%s)" "terraform_apply.log"
 fi
+
+exit "$APPLY_STATUS"

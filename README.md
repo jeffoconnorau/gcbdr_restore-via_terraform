@@ -134,6 +134,8 @@ terraform apply \
 > - **2nd Pass**: Re-running the apply authenticates successfully with the newly propagated IAM roles, locates the real recovery point IDs, and actively triggers workload restoration.
 > 
 > **Always run `./run_restore.sh` twice (with a ~5 min pause)** when activating DR testing!
+>
+> `./run_restore.sh` adds `-var=perform_dr_test=true` automatically (so `terraform.tfvars` can keep `perform_dr_test = false` for the backup phase) and **skips the DR report when no workloads were restored** — i.e. on pass 1 it prints `[PASS 1 COMPLETE]` and tells you to re-run. The report is generated on pass 2 from real Terraform state; the illustrative sample report is only rendered with `DR_REPORT_DEMO=1 python3 scripts/generate_report.py <start_epoch>`.
 
 Once the baseline infrastructure is deployed, **the initial backups have successfully completed**, and cross-project IAM privileges are bound, you can trigger the restore process using the provided wrapper script:
 

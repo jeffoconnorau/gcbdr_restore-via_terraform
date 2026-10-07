@@ -56,9 +56,9 @@ LAB = load_lab_context()
 
 
 def run_command(args):
-    env = {"CLOUDSDK_PYTHON": "/usr/local/bin/python3"}
-    env.update(os.environ)
-    result = subprocess.run(args, env=env, capture_output=True, text=True)
+    # Inherit the caller's environment as-is; gcloud picks its own interpreter
+    # (honours CLOUDSDK_PYTHON only if the user exported it).
+    result = subprocess.run(args, env=os.environ.copy(), capture_output=True, text=True)
     if result.returncode != 0:
         raise Exception(f"Command failed: {' '.join(args)}\nStderr: {result.stderr}")
     return result.stdout
@@ -374,9 +374,14 @@ def main():
             print(f"[INFO] Using backup state file: {backup_state_path}")
             discovered_resources = parse_tfstate(backup_state_path)
             
-        # Fallback default catalog if state is empty
+        # No restored workloads (e.g. pass 1 of the two-phase DR apply): nothing to report.
+        # The illustrative demo catalog is only used when explicitly requested.
+        if not discovered_resources and os.environ.get("DR_REPORT_DEMO") != "1":
+            print("[INFO] No restored workloads found in Terraform state - skipping report.")
+            print("       (Set DR_REPORT_DEMO=1 to render the illustrative sample report instead.)")
+            return
         if not discovered_resources:
-            print("[INFO] State empty. Using default catalog of restored resources for baseline report.")
+            print("[INFO] DR_REPORT_DEMO=1 - rendering illustrative sample catalog (NOT real restore data).")
             discovered_resources = [
                 {"type": "Compute VM", "source_name": "vm-debian", "target_name": "vm-debian-dr", "backup_id": "91e58154-c58f-4dea-b28c-2afb98f5119e", "full_backup_id": "", "location": "asia-southeast2", "gcp_resource_name": f"projects/{dr_project}/zones/asia-southeast2-a/instances/vm-debian-dr", "capacity_gb": 20},
                 {"type": "Compute VM", "source_name": "vm-ubuntu", "target_name": "vm-ubuntu-dr", "backup_id": "2afb98f5-c58f-4dea-b28c-2afb98f5119e", "full_backup_id": "", "location": "asia-southeast2", "gcp_resource_name": f"projects/{dr_project}/zones/asia-southeast2-a/instances/vm-ubuntu-dr", "capacity_gb": 20},
